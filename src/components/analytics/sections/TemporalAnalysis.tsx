@@ -5,6 +5,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 
 interface TemporalAnalysisProps {
   analytics: Analytics;
+}
+
 export type TemporalView = 'hourly' | 'weekly' | 'seasonal' | 'projections';
 
 const TemporalAnalysis: React.FC<TemporalAnalysisProps> = ({ analytics }) => {
