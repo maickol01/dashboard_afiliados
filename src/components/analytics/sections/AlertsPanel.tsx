@@ -4,7 +4,7 @@ import { Analytics } from '../../../types';
 
 interface AlertsPanelProps {
   analytics: Analytics;
-}
+export type AlertCategory = 'all' | 'critical' | 'warnings' | 'achievements';
 
 const AlertsPanel: React.FC<AlertsPanelProps> = ({ analytics }) => {
   const { alerts } = analytics;

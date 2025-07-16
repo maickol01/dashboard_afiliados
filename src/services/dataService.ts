@@ -104,6 +104,10 @@ export class DataService {
       isActive: true,
       lastActivity: new Date(dbRecord.created_at),
       
+      // Campos adicionales para compatibilidad
+      region: dbRecord.entidad,
+      registrationDate: new Date(dbRecord.created_at),
+      
       // Campos de la base de datos
       clave_electoral: dbRecord.clave_electoral || undefined,
       curp: dbRecord.curp || undefined,

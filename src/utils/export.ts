@@ -66,9 +66,9 @@ export const exportInteractiveExcel = (data: Person[], selectedItems: string[]) 
         'ID': person.id,
         'Nombre': person.name,
         'Rol': getRoleName(person.role),
-        'Fecha Registro': person.registrationDate.toLocaleDateString('es-ES'),
+        'Fecha Registro': (person.registrationDate || person.created_at).toLocaleDateString('es-ES'),
         'Ciudadanos Registrados': person.registeredCount,
-        'Región': person.region || '',
+        'Región': person.region || person.entidad || '',
         'Teléfono': person.contactInfo?.phone || '',
         'Email': person.contactInfo?.email || '',
         'Verificado': person.contactInfo?.verified ? 'Sí' : 'No'
@@ -276,7 +276,7 @@ export const exportToExcel = (data: Person[], selectedItems: string[]) => {
         'ID': `${indent}${person.id}`,
         'Nombre': `${indent}${person.name}`,
         'Rol': getRoleName(person.role),
-        'Fecha Registro': person.registrationDate.toLocaleDateString('es-ES'),
+        'Fecha Registro': (person.registrationDate || person.created_at).toLocaleDateString('es-ES'),
         'Ciudadanos Registrados': person.registeredCount,
         'Jerarquía Superior': parentInfo,
         'ID Sin Formato': person.id, // Para referencias
@@ -352,7 +352,7 @@ export const exportToExcel = (data: Person[], selectedItems: string[]) => {
     const leadersData = leaders.map(leader => ({
       ID: leader.id,
       Nombre: leader.name,
-      'Fecha Registro': leader.registrationDate.toLocaleDateString('es-ES'),
+      'Fecha Registro': (leader.registrationDate || leader.created_at).toLocaleDateString('es-ES'),
       'Ciudadanos Registrados': leader.registeredCount,
     }));
     
@@ -366,7 +366,7 @@ export const exportToExcel = (data: Person[], selectedItems: string[]) => {
       return {
         ID: brigadier.id,
         Nombre: brigadier.name,
-        'Fecha Registro': brigadier.registrationDate.toLocaleDateString('es-ES'),
+        'Fecha Registro': (brigadier.registrationDate || brigadier.created_at).toLocaleDateString('es-ES'),
         'Ciudadanos Registrados': brigadier.registeredCount,
         'Líder': hierarchy.leader?.name || '',
       };
@@ -382,7 +382,7 @@ export const exportToExcel = (data: Person[], selectedItems: string[]) => {
       return {
         ID: mobilizer.id,
         Nombre: mobilizer.name,
-        'Fecha Registro': mobilizer.registrationDate.toLocaleDateString('es-ES'),
+        'Fecha Registro': (mobilizer.registrationDate || mobilizer.created_at).toLocaleDateString('es-ES'),
         'Ciudadanos Registrados': mobilizer.registeredCount,
         'Brigadista': hierarchy.brigadier?.name || '',
         'Líder': hierarchy.leader?.name || '',
@@ -399,7 +399,7 @@ export const exportToExcel = (data: Person[], selectedItems: string[]) => {
       return {
         ID: citizen.id,
         Nombre: citizen.name,
-        'Fecha Registro': citizen.registrationDate.toLocaleDateString('es-ES'),
+        'Fecha Registro': (citizen.registrationDate || citizen.created_at).toLocaleDateString('es-ES'),
         'Movilizador': hierarchy.mobilizer?.name || '',
         'Brigadista': hierarchy.brigadier?.name || '',
         'Líder': hierarchy.leader?.name || '',
@@ -543,7 +543,7 @@ export const exportToPDF = (data: Person[], selectedItems: string[]) => {
         `${indent}${person.id}`,
         `${indent}${person.name}`,
         getRoleName(person.role),
-        person.registrationDate.toLocaleDateString('es-ES'),
+        (person.registrationDate || person.created_at).toLocaleDateString('es-ES'),
         person.registeredCount.toString()
       ]);
 
@@ -648,10 +648,14 @@ export const exportToPDF = (data: Person[], selectedItems: string[]) => {
 
 const getRoleName = (role: string) => {
   switch (role) {
-    case 'lider': return 'Líder';
-    case 'brigadista': return 'Brigadista';
-    case 'movilizador': return 'Movilizador';
-    case 'ciudadano': return 'Ciudadano';
+    case 'lider': 
+    case 'leader': return 'Líder';
+    case 'brigadista': 
+    case 'brigadier': return 'Brigadista';
+    case 'movilizador': 
+    case 'mobilizer': return 'Movilizador';
+    case 'ciudadano': 
+    case 'citizen': return 'Ciudadano';
     default: return role;
   }
 };

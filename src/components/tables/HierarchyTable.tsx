@@ -155,10 +155,14 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExport, onExpor
 
   const getRoleName = (role: string) => {
     switch (role) {
-      case 'lider': return 'Líder';
-      case 'brigadista': return 'Brigadista';
-      case 'movilizador': return 'Movilizador';
-      case 'ciudadano': return 'Ciudadano';
+      case 'lider': 
+      case 'leader': return 'Líder';
+      case 'brigadista': 
+      case 'brigadier': return 'Brigadista';
+      case 'movilizador': 
+      case 'mobilizer': return 'Movilizador';
+      case 'ciudadano': 
+      case 'citizen': return 'Ciudadano';
       default: return role;
     }
   };

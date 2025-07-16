@@ -5,7 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 
 interface ComparisonToolsProps {
   analytics: Analytics;
-}
+export type ComparisonType = 'periods' | 'regions' | 'leaders' | 'cohorts';
 
 const ComparisonTools: React.FC<ComparisonToolsProps> = ({ analytics }) => {
   const [selectedComparison, setSelectedComparison] = useState<'periods' | 'regions' | 'leaders' | 'cohorts'>('periods');
