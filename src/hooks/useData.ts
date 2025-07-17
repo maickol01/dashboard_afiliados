@@ -7,6 +7,7 @@ export const useData = () => {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const fetchData = async () => {
     try {
@@ -21,6 +22,7 @@ export const useData = () => {
       
       setData(hierarchicalData);
       setAnalytics(analyticsData);
+      setLastUpdated(new Date());
     } catch (err) {
       console.error('Error al cargar datos:', err);
       setError(err instanceof Error ? err.message : 'Error desconocido al cargar datos');
@@ -31,6 +33,11 @@ export const useData = () => {
 
   useEffect(() => {
     fetchData();
+    
+    // Actualizar datos cada 5 minutos para mantener analytics actualizados
+    const interval = setInterval(fetchData, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const refetchData = () => {
@@ -118,15 +125,49 @@ export const useData = () => {
     return filterInHierarchy(data);
   };
 
+  const filterByRegion = (region: string): Person[] => {
+    const filterInHierarchy = (people: Person[]): Person[] => {
+      const results: Person[] = [];
+      
+      people.forEach(person => {
+        if (person.entidad === region) {
+          results.push(person);
+        }
+        
+        if (person.children) {
+          results.push(...filterInHierarchy(person.children));
+        }
+      });
+      
+      return results;
+    };
+    
+    return filterInHierarchy(data);
+  };
+
+  const getAnalyticsSummary = () => {
+    if (!analytics) return null;
+    
+    return {
+      totalPeople: analytics.totalLideres + analytics.totalBrigadistas + analytics.totalMobilizers + analytics.totalCitizens,
+      conversionRate: analytics.conversionRate,
+      growthRate: analytics.growthRate,
+      dataQuality: analytics.quality.dataCompleteness,
+      lastUpdated
+    };
+  };
   return {
     data,
     analytics,
     loading,
     error,
+    lastUpdated,
     refetchData,
     getRegistrationsByPeriod,
     searchData,
     filterByRole,
     filterByDate,
+    filterByRegion,
+    getAnalyticsSummary,
   };
 };

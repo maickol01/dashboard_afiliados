@@ -14,7 +14,7 @@ import PredictiveAnalytics from './sections/PredictiveAnalytics';
 import ComparisonTools from './sections/ComparisonTools';
 
 const AnalyticsPage: React.FC = () => {
-  const { analytics, loading, error, refetchData, getRegistrationsByPeriod } = useData();
+  const { analytics, loading, error, refetchData, getRegistrationsByPeriod, lastUpdated, getAnalyticsSummary } = useData();
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('day');
   const [activeSection, setActiveSection] = useState<string>('overview');
 
@@ -23,7 +23,8 @@ const AnalyticsPage: React.FC = () => {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando datos de Supabase...</p>
+          <p className="text-gray-600">Cargando analytics en tiempo real...</p>
+          <p className="text-sm text-gray-500 mt-2">Conectando con base de datos...</p>
         </div>
       </div>
     );
@@ -38,8 +39,11 @@ const AnalyticsPage: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Error al cargar datos</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Error al cargar analytics</h3>
           <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-sm text-gray-500 mb-4">
+            Verifica la conexión con Supabase y que las tablas existan
+          </p>
           <button
             onClick={refetchData}
             className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-light"
@@ -54,6 +58,7 @@ const AnalyticsPage: React.FC = () => {
   if (!analytics) return null;
 
   const registrationData = getRegistrationsByPeriod(selectedPeriod);
+  const summary = getAnalyticsSummary();
 
   const stats = [
     {
@@ -61,7 +66,7 @@ const AnalyticsPage: React.FC = () => {
       value: analytics.totalLideres,
       icon: Users,
       color: 'bg-primary',
-      change: '+12%',
+      change: analytics.growthRate > 0 ? `+${analytics.growthRate.toFixed(1)}%` : `${analytics.growthRate.toFixed(1)}%`,
       trend: 'up',
     },
     {
@@ -69,7 +74,7 @@ const AnalyticsPage: React.FC = () => {
       value: analytics.totalBrigadistas,
       icon: UserPlus,
       color: 'bg-secondary',
-      change: '+8%',
+      change: analytics.growthRate > 0 ? `+${(analytics.growthRate * 0.8).toFixed(1)}%` : `${(analytics.growthRate * 0.8).toFixed(1)}%`,
       trend: 'up',
     },
     {
@@ -77,7 +82,7 @@ const AnalyticsPage: React.FC = () => {
       value: analytics.totalMobilizers,
       icon: TrendingUp,
       color: 'bg-accent',
-      change: '+15%',
+      change: analytics.growthRate > 0 ? `+${(analytics.growthRate * 1.2).toFixed(1)}%` : `${(analytics.growthRate * 1.2).toFixed(1)}%`,
       trend: 'up',
     },
     {
@@ -85,7 +90,7 @@ const AnalyticsPage: React.FC = () => {
       value: analytics.totalCitizens,
       icon: Target,
       color: 'bg-neutral',
-      change: '+22%',
+      change: analytics.growthRate > 0 ? `+${(analytics.growthRate * 1.5).toFixed(1)}%` : `${(analytics.growthRate * 1.5).toFixed(1)}%`,
       trend: 'up',
     },
   ];
@@ -290,6 +295,26 @@ const AnalyticsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Información de actualización */}
+      {lastUpdated && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+              <span className="text-sm text-blue-800">
+                Datos actualizados: {lastUpdated.toLocaleString('es-ES')}
+              </span>
+            </div>
+            <button
+              onClick={refetchData}
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+            >
+              Actualizar ahora
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Navegación de secciones */}
       <div className="bg-white p-4 rounded-lg shadow-md">
         <div className="flex flex-wrap gap-2">

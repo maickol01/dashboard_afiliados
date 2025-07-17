@@ -17,17 +17,17 @@ const EfficiencyMetrics: React.FC<EfficiencyMetricsProps> = ({ analytics }) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="text-center p-4 bg-green-50 rounded-lg">
             <Clock className="h-8 w-8 text-green-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-green-600">{efficiency.registrationSpeed.average}h</div>
+            <div className="text-2xl font-bold text-green-600">{efficiency.registrationSpeed.average.toFixed(1)}h</div>
             <div className="text-sm text-gray-600">Promedio</div>
           </div>
           <div className="text-center p-4 bg-blue-50 rounded-lg">
             <TrendingUp className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-blue-600">{efficiency.registrationSpeed.fastest}h</div>
+            <div className="text-2xl font-bold text-blue-600">{efficiency.registrationSpeed.fastest.toFixed(1)}h</div>
             <div className="text-sm text-gray-600">Más Rápido</div>
           </div>
           <div className="text-center p-4 bg-red-50 rounded-lg">
             <TrendingDown className="h-8 w-8 text-red-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-red-600">{efficiency.registrationSpeed.slowest}h</div>
+            <div className="text-2xl font-bold text-red-600">{efficiency.registrationSpeed.slowest.toFixed(1)}h</div>
             <div className="text-sm text-gray-600">Más Lento</div>
           </div>
         </div>
@@ -54,8 +54,8 @@ const EfficiencyMetrics: React.FC<EfficiencyMetricsProps> = ({ analytics }) => {
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-lg font-semibold text-primary">{performer.score.toFixed(1)}%</div>
-                <div className="text-sm text-gray-500">Rendimiento</div>
+                <div className="text-lg font-semibold text-primary">{performer.score}</div>
+                <div className="text-sm text-gray-500">Ciudadanos</div>
               </div>
             </div>
           ))}
