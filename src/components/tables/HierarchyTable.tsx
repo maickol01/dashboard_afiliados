@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Search, Filter, Download, FileText } from 'lucide-react';
 import { Person } from '../../types';
-import { exportTableToExcel, exportInteractiveExcel } from '../../utils/export';
+import { exportInteractiveExcel } from '../../utils/export';
 
 interface HierarchyTableProps {
   data: Person[];
-  onExport: (selectedItems: string[]) => void;
   onExportPDF: (selectedItems: string[]) => void;
 }
 
-const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExport, onExportPDF }) => {
+const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) => {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -155,10 +154,14 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExport, onExpor
 
   const getRoleName = (role: string) => {
     switch (role) {
-      case 'lider': return 'Líder';
-      case 'brigadista': return 'Brigadista';
-      case 'movilizador': return 'Movilizador';
-      case 'ciudadano': return 'Ciudadano';
+      case 'lider': 
+      case 'leader': return 'Líder';
+      case 'brigadista': 
+      case 'brigadier': return 'Brigadista';
+      case 'movilizador': 
+      case 'mobilizer': return 'Movilizador';
+      case 'ciudadano': 
+      case 'citizen': return 'Ciudadano';
       default: return role;
     }
   };
@@ -200,7 +203,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExport, onExpor
               {person.children && person.children.length > 0 && (
                 <button
                   onClick={() => toggleExpanded(person.id)}
-                  className="mr-2 p-1 rounded hover:bg-gray-200"
+                  className="mr-2 p-1 rounded-sm hover:bg-gray-200"
                 >
                   {expandedItems.has(person.id) ? (
                     <ChevronDown className="h-4 w-4" />
@@ -213,7 +216,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExport, onExpor
                 type="checkbox"
                 checked={selectedItems.has(person.id)}
                 onChange={() => toggleItemSelection(person.id)}
-                className="mr-2 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                className="mr-2 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded-sm"
               />
               <span className="text-sm font-medium text-gray-900">{person.id}</span>
             </div>
@@ -249,7 +252,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExport, onExpor
               type="checkbox"
               checked={selectedItems.has(person.id)}
               onChange={() => toggleItemSelection(person.id)}
-              className="mr-2 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+              className="mr-2 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded-sm"
             />
             <span className="text-sm font-medium text-gray-900">{person.id}</span>
           </div>
@@ -276,7 +279,6 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExport, onExpor
 
   // Determinar si mostrar vista jerárquica o plana
   const showHierarchicalView = roleFilter === 'all' || roleFilter === 'leader' || roleFilter === 'brigadier' || roleFilter === 'mobilizer';
-  const showFlatView = roleFilter === 'citizen';
 
   return (
     <div className="bg-white shadow-md rounded-lg overflow-hidden">

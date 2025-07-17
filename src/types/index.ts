@@ -39,6 +39,10 @@ export interface Person {
     monthlyGoal: number;
     achievementRate: number;
   };
+  
+  // Campos adicionales para compatibilidad
+  region?: string;
+  registrationDate?: Date;
 }
 
 export interface Analytics {

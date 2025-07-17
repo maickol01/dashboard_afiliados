@@ -1,20 +1,41 @@
 import { useState, useEffect } from 'react';
 import { Person, Analytics, Period } from '../types';
-import { mockData, mockAnalytics } from '../data/mockData';
+import { DataService } from '../services/dataService';
 
 export const useData = () => {
   const [data, setData] = useState<Person[]>([]);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Obtener datos jerárquicos de Supabase
+      const hierarchicalData = await DataService.getAllHierarchicalData();
+      
+      // Generar analytics basados en los datos reales
+      const analyticsData = await DataService.generateAnalyticsFromData(hierarchicalData);
+      
+      setData(hierarchicalData);
+      setAnalytics(analyticsData);
+    } catch (err) {
+      console.error('Error al cargar datos:', err);
+      setError(err instanceof Error ? err.message : 'Error desconocido al cargar datos');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Simular carga de datos
-    setTimeout(() => {
-      setData(mockData);
-      setAnalytics(mockAnalytics);
-      setLoading(false);
-    }, 1000);
+    fetchData();
   }, []);
+
+  const refetchData = () => {
+    fetchData();
+  };
 
   const getRegistrationsByPeriod = (period: Period) => {
     if (!analytics) return [];
@@ -81,7 +102,7 @@ export const useData = () => {
       const results: Person[] = [];
       
       people.forEach(person => {
-        const personDate = new Date(person.registrationDate);
+        const personDate = new Date(person.created_at);
         if (personDate >= startDate && personDate <= endDate) {
           results.push(person);
         }
@@ -101,6 +122,8 @@ export const useData = () => {
     data,
     analytics,
     loading,
+    error,
+    refetchData,
     getRegistrationsByPeriod,
     searchData,
     filterByRole,

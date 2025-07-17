@@ -60,7 +60,7 @@ const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ analytics }) 
                   <div className="text-sm font-medium">Factores de riesgo:</div>
                   <div className="flex flex-wrap gap-2">
                     {person.factors.map((factor, index) => (
-                      <span key={index} className="px-2 py-1 bg-white bg-opacity-50 rounded text-xs">
+                      <span key={index} className="px-2 py-1 bg-white bg-opacity-50 rounded-sm text-xs">
                         {factor}
                       </span>
                     ))}
@@ -187,7 +187,7 @@ const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ analytics }) 
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
-                    className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full"
+                    className="bg-linear-to-r from-primary to-secondary h-2 rounded-full"
                     style={{ width: `${item.impact}%` }}
                   ></div>
                 </div>
@@ -201,7 +201,7 @@ const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ analytics }) 
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Recomendaciones Estratégicas Basadas en IA</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 bg-gradient-to-r from-primary to-secondary text-white rounded-lg">
+          <div className="p-4 bg-linear-to-r from-primary to-secondary text-white rounded-lg">
             <h4 className="font-medium mb-2">Acción Inmediata</h4>
             <p className="text-sm opacity-90">
               Implementar programa de retención para personas en riesgo alto. 
@@ -209,7 +209,7 @@ const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ analytics }) 
             </p>
           </div>
           
-          <div className="p-4 bg-gradient-to-r from-accent to-neutral text-white rounded-lg">
+          <div className="p-4 bg-linear-to-r from-accent to-neutral text-white rounded-lg">
             <h4 className="font-medium mb-2">Mediano Plazo</h4>
             <p className="text-sm opacity-90">
               Desarrollar programa de capacitación basado en patrones de éxito identificados. 
@@ -217,7 +217,7 @@ const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ analytics }) 
             </p>
           </div>
           
-          <div className="p-4 bg-gradient-to-r from-secondary to-accent text-white rounded-lg">
+          <div className="p-4 bg-linear-to-r from-secondary to-accent text-white rounded-lg">
             <h4 className="font-medium mb-2">Largo Plazo</h4>
             <p className="text-sm opacity-90">
               Establecer sistema de monitoreo predictivo automatizado para 
@@ -225,7 +225,7 @@ const PredictiveAnalytics: React.FC<PredictiveAnalyticsProps> = ({ analytics }) 
             </p>
           </div>
           
-          <div className="p-4 bg-gradient-to-r from-neutral to-primary text-white rounded-lg">
+          <div className="p-4 bg-linear-to-r from-neutral to-primary text-white rounded-lg">
             <h4 className="font-medium mb-2">Optimización Continua</h4>
             <p className="text-sm opacity-90">
               Revisar y ajustar modelos predictivos mensualmente basado en 

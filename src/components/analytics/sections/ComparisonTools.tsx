@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Calendar, BarChart3, TrendingUp, Users } from 'lucide-react';
-import { Analytics, ComparisonPeriod } from '../../../types';
+import { Analytics } from '../../../types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 interface ComparisonToolsProps {
   analytics: Analytics;
 }
+export type ComparisonType = 'periods' | 'regions' | 'leaders' | 'cohorts';
 
 const ComparisonTools: React.FC<ComparisonToolsProps> = ({ analytics }) => {
   const [selectedComparison, setSelectedComparison] = useState<'periods' | 'regions' | 'leaders' | 'cohorts'>('periods');
@@ -56,7 +57,7 @@ const ComparisonTools: React.FC<ComparisonToolsProps> = ({ analytics }) => {
 
   const renderComparison = () => {
     switch (selectedComparison) {
-      case 'periods':
+      case 'periods': {
         const data1 = periodComparisons[period1 as keyof typeof periodComparisons];
         const data2 = periodComparisons[period2 as keyof typeof periodComparisons];
         
@@ -173,6 +174,7 @@ const ComparisonTools: React.FC<ComparisonToolsProps> = ({ analytics }) => {
             </div>
           </div>
         );
+      }
 
       case 'regions':
         return (

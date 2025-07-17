@@ -7,6 +7,8 @@ interface TemporalAnalysisProps {
   analytics: Analytics;
 }
 
+export type TemporalView = 'hourly' | 'weekly' | 'seasonal' | 'projections';
+
 const TemporalAnalysis: React.FC<TemporalAnalysisProps> = ({ analytics }) => {
   const { temporal } = analytics;
   const [selectedView, setSelectedView] = useState<'hourly' | 'weekly' | 'seasonal' | 'projections'>('hourly');

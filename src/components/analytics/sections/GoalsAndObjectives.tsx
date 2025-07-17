@@ -56,7 +56,7 @@ const GoalsAndObjectives: React.FC<GoalsAndObjectivesProps> = ({ analytics }) =>
 
         <div className="w-full bg-gray-200 rounded-full h-4 mb-4">
           <div 
-            className="bg-gradient-to-r from-primary to-secondary h-4 rounded-full transition-all duration-1000 relative"
+            className="bg-linear-to-r from-primary to-secondary h-4 rounded-full transition-all duration-1000 relative"
             style={{ width: `${Math.min(goals.overallProgress.percentage, 100)}%` }}
           >
             <div className="absolute right-0 top-0 h-4 w-4 bg-white rounded-full border-2 border-primary transform translate-x-1/2"></div>

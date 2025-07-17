@@ -6,6 +6,8 @@ interface AlertsPanelProps {
   analytics: Analytics;
 }
 
+export type AlertCategory = 'all' | 'critical' | 'warnings' | 'achievements';
+
 const AlertsPanel: React.FC<AlertsPanelProps> = ({ analytics }) => {
   const { alerts } = analytics;
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
@@ -34,7 +36,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({ analytics }) => {
   };
 
   const filteredAlerts = () => {
-    let allAlerts: any[] = [];
+    const allAlerts: Array<{ id: string; message: string; date?: string; type?: string; category: string }> = [];
     
     if (selectedCategory === 'all' || selectedCategory === 'critical') {
       allAlerts.push(...alerts.critical.map(alert => ({ ...alert, category: 'critical' })));
