@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import Layout from './components/layout/Layout';
 import AnalyticsPage from './components/analytics/AnalyticsPage';
 import HierarchyPage from './components/hierarchy/HierarchyPage';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { DataErrorBoundary } from './components/common/DataErrorBoundary';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<'analytics' | 'hierarchy'>('analytics');
@@ -18,9 +20,13 @@ function App() {
   };
 
   return (
-    <Layout currentPage={currentPage} onPageChange={setCurrentPage}>
-      {renderPage()}
-    </Layout>
+    <ErrorBoundary>
+      <Layout currentPage={currentPage} onPageChange={setCurrentPage}>
+        <DataErrorBoundary>
+          {renderPage()}
+        </DataErrorBoundary>
+      </Layout>
+    </ErrorBoundary>
   );
 }
 

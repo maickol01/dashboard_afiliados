@@ -81,15 +81,28 @@ export const exportInteractiveExcel = (data: Person[], selectedItems: string[]) 
     const addPersonWithGrouping = (person: Person, level: number = 0) => {
       // Agregar la persona actual
       excelData.push({
+        // Core fields
         'ID': person.id,
         'Nombre': person.name,
         'Rol': getRoleName(person.role),
         'Fecha Registro': (person.registrationDate || person.created_at).toLocaleDateString('es-ES'),
         'Ciudadanos Registrados': person.registeredCount,
-        'Región': person.region || person.entidad || '',
-        'Teléfono': person.contactInfo?.phone || '',
-        'Email': person.contactInfo?.email || '',
-        'Verificado': person.contactInfo?.verified ? 'Sí' : 'No'
+        // Electoral fields
+        'Clave Electoral': person.clave_electoral || '',
+        'CURP': person.curp || '',
+        'Sección': person.seccion || '',
+        'Entidad': person.entidad || '',
+        'Municipio': person.municipio || '',
+        // Contact fields
+        'Dirección': person.direccion || '',
+        'Colonia': person.colonia || '',
+        'Código Postal': person.codigo_postal || '',
+        'Número Celular': person.numero_cel || '',
+        'Verificado': person.num_verificado ? 'Sí' : 'No',
+        // Relationship fields (where applicable)
+        'ID Líder': person.lider_id || '',
+        'ID Brigadista': person.brigadista_id || '',
+        'ID Movilizador': person.movilizador_id || ''
       });
 
       // Si no es el nivel base (líder), configurar agrupación
@@ -132,10 +145,19 @@ export const exportInteractiveExcel = (data: Person[], selectedItems: string[]) 
     { wch: 15 }, // Rol
     { wch: 15 }, // Fecha
     { wch: 18 }, // Registrados
-    { wch: 12 }, // Región
-    { wch: 15 }, // Teléfono
-    { wch: 25 }, // Email
-    { wch: 12 }  // Verificado
+    { wch: 15 }, // Clave Electoral
+    { wch: 18 }, // CURP
+    { wch: 10 }, // Sección
+    { wch: 15 }, // Entidad
+    { wch: 15 }, // Municipio
+    { wch: 25 }, // Dirección
+    { wch: 15 }, // Colonia
+    { wch: 12 }, // Código Postal
+    { wch: 15 }, // Número Celular
+    { wch: 10 }, // Verificado
+    { wch: 12 }, // ID Líder
+    { wch: 12 }, // ID Brigadista
+    { wch: 12 }  // ID Movilizador
   ];
 
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Estructura Interactiva');
@@ -280,6 +302,22 @@ export const exportToExcel = (data: Person[], selectedItems: string[]) => {
         'Fecha Registro': (person.registrationDate || person.created_at).toLocaleDateString('es-ES'),
         'Ciudadanos Registrados': person.registeredCount,
         'Jerarquía Superior': parentInfo,
+        // Core database fields
+        'Clave Electoral': person.clave_electoral || '',
+        'CURP': person.curp || '',
+        'Sección': person.seccion || '',
+        'Entidad': person.entidad || '',
+        'Municipio': person.municipio || '',
+        // Contact fields
+        'Dirección': person.direccion || '',
+        'Colonia': person.colonia || '',
+        'Código Postal': person.codigo_postal || '',
+        'Número Celular': person.numero_cel || '',
+        'Verificado': person.num_verificado ? 'Sí' : 'No',
+        // Relationship fields (where applicable)
+        'ID Líder': person.lider_id || '',
+        'ID Brigadista': person.brigadista_id || '',
+        'ID Movilizador': person.movilizador_id || '',
         'ID Sin Formato': person.id, // Para referencias
         'Nombre Sin Formato': person.name // Para referencias
       });
@@ -316,6 +354,19 @@ export const exportToExcel = (data: Person[], selectedItems: string[]) => {
     { wch: 15 }, // Fecha
     { wch: 18 }, // Registrados
     { wch: 30 }, // Jerarquía Superior
+    { wch: 15 }, // Clave Electoral
+    { wch: 18 }, // CURP
+    { wch: 10 }, // Sección
+    { wch: 15 }, // Entidad
+    { wch: 15 }, // Municipio
+    { wch: 25 }, // Dirección
+    { wch: 15 }, // Colonia
+    { wch: 12 }, // Código Postal
+    { wch: 15 }, // Número Celular
+    { wch: 10 }, // Verificado
+    { wch: 12 }, // ID Líder
+    { wch: 12 }, // ID Brigadista
+    { wch: 12 }, // ID Movilizador
     { wch: 12 }, // ID Sin Formato
     { wch: 20 }  // Nombre Sin Formato
   ];
@@ -326,11 +377,29 @@ export const exportToExcel = (data: Person[], selectedItems: string[]) => {
   const flatData = filteredPeople.map(person => {
     const hierarchy = findPersonHierarchy(person.id, allPeople);
     return {
+      // Core fields
       'ID': person.id,
       'Nombre': person.name,
       'Rol': getRoleName(person.role),
       'Fecha Registro': (person.registrationDate || person.created_at).toLocaleDateString('es-ES'),
       'Ciudadanos Registrados': person.registeredCount,
+      // Electoral fields
+      'Clave Electoral': person.clave_electoral || '',
+      'CURP': person.curp || '',
+      'Sección': person.seccion || '',
+      'Entidad': person.entidad || '',
+      'Municipio': person.municipio || '',
+      // Contact fields
+      'Dirección': person.direccion || '',
+      'Colonia': person.colonia || '',
+      'Código Postal': person.codigo_postal || '',
+      'Número Celular': person.numero_cel || '',
+      'Verificado': person.num_verificado ? 'Sí' : 'No',
+      // Relationship fields
+      'ID Líder Directo': person.lider_id || '',
+      'ID Brigadista Directo': person.brigadista_id || '',
+      'ID Movilizador Directo': person.movilizador_id || '',
+      // Hierarchy information
       'Líder': hierarchy.leader?.name || '',
       'ID Líder': hierarchy.leader?.id || '',
       'Brigadista': hierarchy.brigadier?.name || '',
@@ -351,10 +420,23 @@ export const exportToExcel = (data: Person[], selectedItems: string[]) => {
 
   if (leaders.length > 0) {
     const leadersData = leaders.map(leader => ({
+      // Core fields
       ID: leader.id,
       Nombre: leader.name,
       'Fecha Registro': (leader.registrationDate || leader.created_at).toLocaleDateString('es-ES'),
       'Ciudadanos Registrados': leader.registeredCount,
+      // Electoral fields
+      'Clave Electoral': leader.clave_electoral || '',
+      'CURP': leader.curp || '',
+      'Sección': leader.seccion || '',
+      'Entidad': leader.entidad || '',
+      'Municipio': leader.municipio || '',
+      // Contact fields
+      'Dirección': leader.direccion || '',
+      'Colonia': leader.colonia || '',
+      'Código Postal': leader.codigo_postal || '',
+      'Número Celular': leader.numero_cel || '',
+      'Verificado': leader.num_verificado ? 'Sí' : 'No',
     }));
 
     const leadersSheet = XLSX.utils.json_to_sheet(leadersData);
@@ -365,10 +447,25 @@ export const exportToExcel = (data: Person[], selectedItems: string[]) => {
     const brigadiersData = brigadiers.map(brigadier => {
       const hierarchy = findPersonHierarchy(brigadier.id, allPeople);
       return {
+        // Core fields
         ID: brigadier.id,
         Nombre: brigadier.name,
         'Fecha Registro': (brigadier.registrationDate || brigadier.created_at).toLocaleDateString('es-ES'),
         'Ciudadanos Registrados': brigadier.registeredCount,
+        // Electoral fields
+        'Clave Electoral': brigadier.clave_electoral || '',
+        'CURP': brigadier.curp || '',
+        'Sección': brigadier.seccion || '',
+        'Entidad': brigadier.entidad || '',
+        'Municipio': brigadier.municipio || '',
+        // Contact fields
+        'Dirección': brigadier.direccion || '',
+        'Colonia': brigadier.colonia || '',
+        'Código Postal': brigadier.codigo_postal || '',
+        'Número Celular': brigadier.numero_cel || '',
+        'Verificado': brigadier.num_verificado ? 'Sí' : 'No',
+        // Relationship fields
+        'ID Líder': brigadier.lider_id || '',
         'Líder': hierarchy.leader?.name || '',
       };
     });
@@ -381,10 +478,25 @@ export const exportToExcel = (data: Person[], selectedItems: string[]) => {
     const mobilizersData = mobilizers.map(mobilizer => {
       const hierarchy = findPersonHierarchy(mobilizer.id, allPeople);
       return {
+        // Core fields
         ID: mobilizer.id,
         Nombre: mobilizer.name,
         'Fecha Registro': (mobilizer.registrationDate || mobilizer.created_at).toLocaleDateString('es-ES'),
         'Ciudadanos Registrados': mobilizer.registeredCount,
+        // Electoral fields
+        'Clave Electoral': mobilizer.clave_electoral || '',
+        'CURP': mobilizer.curp || '',
+        'Sección': mobilizer.seccion || '',
+        'Entidad': mobilizer.entidad || '',
+        'Municipio': mobilizer.municipio || '',
+        // Contact fields
+        'Dirección': mobilizer.direccion || '',
+        'Colonia': mobilizer.colonia || '',
+        'Código Postal': mobilizer.codigo_postal || '',
+        'Número Celular': mobilizer.numero_cel || '',
+        'Verificado': mobilizer.num_verificado ? 'Sí' : 'No',
+        // Relationship fields
+        'ID Brigadista': mobilizer.brigadista_id || '',
         'Brigadista': hierarchy.brigadier?.name || '',
         'Líder': hierarchy.leader?.name || '',
       };
@@ -398,9 +510,24 @@ export const exportToExcel = (data: Person[], selectedItems: string[]) => {
     const citizensData = citizens.map(citizen => {
       const hierarchy = findPersonHierarchy(citizen.id, allPeople);
       return {
+        // Core fields
         ID: citizen.id,
         Nombre: citizen.name,
         'Fecha Registro': (citizen.registrationDate || citizen.created_at).toLocaleDateString('es-ES'),
+        // Electoral fields
+        'Clave Electoral': citizen.clave_electoral || '',
+        'CURP': citizen.curp || '',
+        'Sección': citizen.seccion || '',
+        'Entidad': citizen.entidad || '',
+        'Municipio': citizen.municipio || '',
+        // Contact fields
+        'Dirección': citizen.direccion || '',
+        'Colonia': citizen.colonia || '',
+        'Código Postal': citizen.codigo_postal || '',
+        'Número Celular': citizen.numero_cel || '',
+        'Verificado': citizen.num_verificado ? 'Sí' : 'No',
+        // Relationship fields
+        'ID Movilizador': citizen.movilizador_id || '',
         'Movilizador': hierarchy.mobilizer?.name || '',
         'Brigadista': hierarchy.brigadier?.name || '',
         'Líder': hierarchy.leader?.name || '',
@@ -490,7 +617,7 @@ export const exportToPDF = (data: Person[], selectedItems: string[]) => {
   doc.text(`Fecha de exportación: ${new Date().toLocaleDateString('es-ES')}`, 20, 30);
   doc.text(`Total de personas: ${filteredPeople.length}`, 20, 40);
 
-  // Crear datos para la tabla jerárquica
+  // Crear datos para la tabla jerárquica con campos principales
   const createHierarchicalPDFData = () => {
     const pdfData: string[][] = [];
 
@@ -503,7 +630,10 @@ export const exportToPDF = (data: Person[], selectedItems: string[]) => {
         `${indent}${person.name}`,
         getRoleName(person.role),
         (person.registrationDate || person.created_at).toLocaleDateString('es-ES'),
-        person.registeredCount.toString()
+        person.registeredCount.toString(),
+        person.entidad || '',
+        person.numero_cel || '',
+        person.num_verificado ? 'Sí' : 'No'
       ]);
 
       // Agregar hijos si existen y están en la lista filtrada
@@ -526,31 +656,35 @@ export const exportToPDF = (data: Person[], selectedItems: string[]) => {
 
   const hierarchicalData = createHierarchicalPDFData();
 
-  // Crear tabla principal
+  // Crear tabla principal con campos adicionales
   autoTable(doc, {
-    head: [['ID', 'Nombre', 'Rol', 'Fecha Registro', 'Registrados']],
+    head: [['ID', 'Nombre', 'Rol', 'Fecha', 'Registrados', 'Entidad', 'Teléfono', 'Verificado']],
     body: hierarchicalData,
     startY: 50,
     styles: {
-      fontSize: 8,
-      cellPadding: 3,
+      fontSize: 7,
+      cellPadding: 2,
     },
     headStyles: {
       fillColor: [35, 91, 78], // Color primario
       textColor: [255, 255, 255],
       fontStyle: 'bold',
+      fontSize: 8,
     },
     alternateRowStyles: {
       fillColor: [249, 250, 251],
     },
     columnStyles: {
-      0: { cellWidth: 25 }, // ID
-      1: { cellWidth: 40 }, // Nombre
-      2: { cellWidth: 25 }, // Rol
-      3: { cellWidth: 30 }, // Fecha
-      4: { cellWidth: 20 }, // Registrados
+      0: { cellWidth: 20 }, // ID
+      1: { cellWidth: 35 }, // Nombre
+      2: { cellWidth: 20 }, // Rol
+      3: { cellWidth: 22 }, // Fecha
+      4: { cellWidth: 18 }, // Registrados
+      5: { cellWidth: 25 }, // Entidad
+      6: { cellWidth: 25 }, // Teléfono
+      7: { cellWidth: 15 }, // Verificado
     },
-    margin: { top: 50, left: 20, right: 20 },
+    margin: { top: 50, left: 10, right: 10 },
   });
 
   // Agregar resumen en nueva página si hay espacio
@@ -598,6 +732,78 @@ export const exportToPDF = (data: Person[], selectedItems: string[]) => {
       1: { cellWidth: 30, halign: 'center' },
     },
     margin: { left: 20, right: 20 },
+  });
+
+  // Agregar página detallada con todos los campos de la base de datos
+  doc.addPage();
+  doc.setFontSize(16);
+  doc.setTextColor(35, 91, 78);
+  doc.text('Detalle Completo de Campos de Base de Datos', 20, 20);
+
+  // Crear tabla detallada con todos los campos
+  const createDetailedPDFData = () => {
+    const detailedData: string[][] = [];
+
+    filteredPeople.forEach(person => {
+      detailedData.push([
+        person.id,
+        person.name,
+        getRoleName(person.role),
+        person.clave_electoral || '',
+        person.curp || '',
+        person.seccion || '',
+        person.entidad || '',
+        person.municipio || '',
+        person.direccion || '',
+        person.colonia || '',
+        person.codigo_postal || '',
+        person.numero_cel || '',
+        person.num_verificado ? 'Sí' : 'No',
+        (person.registrationDate || person.created_at).toLocaleDateString('es-ES')
+      ]);
+    });
+
+    return detailedData;
+  };
+
+  const detailedData = createDetailedPDFData();
+
+  // Crear tabla detallada con todos los campos de la base de datos
+  autoTable(doc, {
+    head: [['ID', 'Nombre', 'Rol', 'Clave Electoral', 'CURP', 'Sección', 'Entidad', 'Municipio', 'Dirección', 'Colonia', 'C.P.', 'Teléfono', 'Verificado', 'Fecha']],
+    body: detailedData,
+    startY: 30,
+    styles: {
+      fontSize: 6,
+      cellPadding: 1,
+    },
+    headStyles: {
+      fillColor: [35, 91, 78],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 7,
+    },
+    alternateRowStyles: {
+      fillColor: [249, 250, 251],
+    },
+    columnStyles: {
+      0: { cellWidth: 15 }, // ID
+      1: { cellWidth: 25 }, // Nombre
+      2: { cellWidth: 15 }, // Rol
+      3: { cellWidth: 18 }, // Clave Electoral
+      4: { cellWidth: 20 }, // CURP
+      5: { cellWidth: 12 }, // Sección
+      6: { cellWidth: 15 }, // Entidad
+      7: { cellWidth: 15 }, // Municipio
+      8: { cellWidth: 25 }, // Dirección
+      9: { cellWidth: 15 }, // Colonia
+      10: { cellWidth: 10 }, // C.P.
+      11: { cellWidth: 18 }, // Teléfono
+      12: { cellWidth: 12 }, // Verificado
+      13: { cellWidth: 15 }, // Fecha
+    },
+    margin: { top: 30, left: 5, right: 5 },
+    theme: 'striped'
   });
 
   // Generar archivo

@@ -58,16 +58,24 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
     if (roleFilter === 'all') {
       // Vista jerárquica completa
       return data.filter(person => {
-        const matchesSearch = person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            person.id.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = person.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            person.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            (person.direccion && person.direccion.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                            (person.colonia && person.colonia.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                            (person.seccion && person.seccion.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                            (person.numero_cel && person.numero_cel.toLowerCase().includes(searchTerm.toLowerCase()));
         return matchesSearch;
       });
     } else {
       // Vista filtrada por rol pero manteniendo estructura jerárquica
       const allPeople = getAllPeopleFlat(data);
       const filteredPeople = allPeople.filter(person => {
-        const matchesSearch = person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            person.id.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = person.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            person.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            (person.direccion && person.direccion.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                            (person.colonia && person.colonia.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                            (person.seccion && person.seccion.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                            (person.numero_cel && person.numero_cel.toLowerCase().includes(searchTerm.toLowerCase()));
         const matchesRole = person.role === roleFilter;
         return matchesSearch && matchesRole;
       });
@@ -144,10 +152,14 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'leader': return 'bg-primary text-white';
-      case 'brigadier': return 'bg-secondary text-white';
-      case 'mobilizer': return 'bg-accent text-white';
-      case 'citizen': return 'bg-neutral text-white';
+      case 'lider':
+      case 'leader': return 'bg-[#235B4E] text-white'; // Primary color
+      case 'brigadista':
+      case 'brigadier': return 'bg-[#9F2241] text-white'; // Secondary color
+      case 'movilizador':
+      case 'mobilizer': return 'bg-[#BC955C] text-white'; // Accent color
+      case 'ciudadano':
+      case 'citizen': return 'bg-[#6F7271] text-white'; // Neutral color
       default: return 'bg-gray-500 text-white';
     }
   };
@@ -199,6 +211,11 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
       <React.Fragment key={person.id}>
         <tr className="hover:bg-gray-50">
           <td className="px-6 py-4 whitespace-nowrap">
+            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(person.role)}`}>
+              {getRoleName(person.role)}
+            </span>
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap">
             <div className="flex items-center" style={{ paddingLeft: `${level * 20}px` }}>
               {person.children && person.children.length > 0 && (
                 <button
@@ -218,22 +235,20 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
                 onChange={() => toggleItemSelection(person.id)}
                 className="mr-2 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded-sm"
               />
-              <span className="text-sm font-medium text-gray-900">{person.id}</span>
+              <span className="text-sm font-medium text-gray-900">{person.nombre}</span>
             </div>
           </td>
           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-            {person.name}
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap">
-            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(person.role)}`}>
-              {getRoleName(person.role)}
-            </span>
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-            {person.created_at.toLocaleDateString('es-ES')}
+            {person.direccion || '-'}
           </td>
           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-            {person.registeredCount}
+            {person.colonia || '-'}
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            {person.seccion || '-'}
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            {person.numero_cel || '-'}
           </td>
         </tr>
         {expandedItems.has(person.id) && person.children && 
@@ -247,6 +262,11 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
     return people.map((person) => (
       <tr key={person.id} className="hover:bg-gray-50">
         <td className="px-6 py-4 whitespace-nowrap">
+          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(person.role)}`}>
+            {getRoleName(person.role)}
+          </span>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
           <div className="flex items-center">
             <input
               type="checkbox"
@@ -254,22 +274,20 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
               onChange={() => toggleItemSelection(person.id)}
               className="mr-2 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded-sm"
             />
-            <span className="text-sm font-medium text-gray-900">{person.id}</span>
+            <span className="text-sm font-medium text-gray-900">{person.nombre}</span>
           </div>
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-          {person.name}
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap">
-          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(person.role)}`}>
-            {getRoleName(person.role)}
-          </span>
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-          {person.created_at.toLocaleDateString('es-ES')}
+          {person.direccion || '-'}
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-          {person.registeredCount}
+          {person.colonia || '-'}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          {person.seccion || '-'}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          {person.numero_cel || '-'}
         </td>
       </tr>
     ));
@@ -291,7 +309,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Buscar por nombre o ID..."
+                placeholder="Buscar por nombre, dirección, colonia, sección o teléfono..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
@@ -353,19 +371,22 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                ID
+                Rol
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Nombre
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Rol
+                Dirección
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Fecha Registro
+                Colonia
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Registrados
+                Sección
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Teléfono
               </th>
             </tr>
           </thead>

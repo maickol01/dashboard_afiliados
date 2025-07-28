@@ -20,7 +20,6 @@ export interface Person {
   municipio?: string;
   numero_cel?: string;
   num_verificado: boolean;
-  verification_token?: string;
   
   // Campos específicos por rol
   lider_id?: string; // Para brigadistas
@@ -68,6 +67,8 @@ export interface Analytics {
   
   geographic: {
     regionDistribution: { region: string; count: number; percentage: number }[];
+    municipioDistribution?: { region: string; count: number; percentage: number }[];
+    seccionDistribution?: { region: string; count: number; percentage: number }[];
     heatmapData: { region: string; intensity: number; coordinates?: [number, number] }[];
     territorialCoverage: { region: string; coverage: number; target: number }[];
   };
@@ -77,6 +78,12 @@ export interface Analytics {
     weeklyPatterns: { day: string; registrations: number }[];
     seasonality: { month: string; registrations: number; trend: 'up' | 'down' | 'stable' }[];
     projections: { date: string; projected: number; confidence: number }[];
+    peakActivity?: {
+      peakHour: { hour: number; registrations: number };
+      peakDay: { day: string; registrations: number };
+      peakMonth: { month: string; registrations: number };
+      activityTrends: { period: string; trend: 'increasing' | 'decreasing' | 'stable'; change: number }[];
+    };
   };
   
   quality: {
@@ -126,3 +133,17 @@ export interface ComparisonPeriod {
   start: Date;
   end: Date;
 }
+
+// Re-export error types for convenience
+export { 
+  DatabaseError, 
+  NetworkError, 
+  ValidationError, 
+  ServiceError, 
+  RetryableError,
+  isNetworkError,
+  isDatabaseError,
+  isRetryableError,
+  isValidationError,
+  classifyError
+} from './errors';

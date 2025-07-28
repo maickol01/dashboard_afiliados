@@ -1,31 +1,134 @@
 import { useState, useEffect } from 'react';
 import { Person, Analytics, Period } from '../types';
 import { DataService } from '../services/dataService';
+import { DatabaseError, NetworkError, ValidationError, ServiceError } from '../types/errors';
 
 export const useData = () => {
   const [data, setData] = useState<Person[]>([]);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
+  const [performanceMetrics, setPerformanceMetrics] = useState<{
+    dataFetchTime: number;
+    analyticsGenerationTime: number;
+    totalRecords: number;
+    cacheHit: boolean;
+  } | null>(null);
 
-  const fetchData = async () => {
+  const handleError = (err: unknown): string => {
+    console.error('Error al cargar datos:', err);
+    
+    if (err instanceof NetworkError) {
+      return 'Error de conexión. Verifica tu conexión a internet e intenta nuevamente.';
+    }
+    
+    if (err instanceof DatabaseError) {
+      return 'Error en la base de datos. El problema puede ser temporal, intenta recargar la página.';
+    }
+    
+    if (err instanceof ValidationError) {
+      return 'Error de validación de datos. Contacta al administrador si el problema persiste.';
+    }
+    
+    if (err instanceof ServiceError) {
+      return 'Error del servicio. Intenta nuevamente en unos momentos.';
+    }
+    
+    if (err instanceof Error) {
+      return `Error: ${err.message}`;
+    }
+    
+    return 'Error desconocido al cargar datos. Intenta recargar la página.';
+  };
+
+  const fetchData = async (isRetry: boolean = false, forceRefresh: boolean = false) => {
+    const startTime = Date.now();
+    
     try {
       setLoading(true);
-      setError(null);
+      if (!isRetry) {
+        setError(null);
+        setRetryCount(0);
+      }
       
-      // Obtener datos jerárquicos de Supabase
-      const hierarchicalData = await DataService.getAllHierarchicalData();
+      // Check cache status for performance metrics
+      const cacheStatus = DataService.getCacheStatus();
+      console.log('Cache status:', cacheStatus);
       
-      // Generar analytics basados en los datos reales
-      const analyticsData = await DataService.generateAnalyticsFromData(hierarchicalData);
+      // Check service health before fetching data
+      const healthCheck = await DataService.healthCheck();
+      if (healthCheck.status === 'unhealthy') {
+        throw new ServiceError('Service is currently unavailable');
+      }
       
+      // Obtener datos jerárquicos de Supabase con optimizaciones
+      const dataFetchStart = Date.now();
+      const hierarchicalData = await DataService.getAllHierarchicalData(forceRefresh);
+      const dataFetchTime = Date.now() - dataFetchStart;
+      
+      // Set data immediately for better UX
       setData(hierarchicalData);
+      
+      // Generate analytics with loading state
+      setAnalyticsLoading(true);
+      const analyticsStart = Date.now();
+      const analyticsData = await DataService.generateAnalyticsFromData(hierarchicalData, forceRefresh);
+      const analyticsGenerationTime = Date.now() - analyticsStart;
+      
       setAnalytics(analyticsData);
-      setLastUpdated(new Date());
+      setAnalyticsLoading(false);
+      setLastFetchTime(new Date());
+      setError(null);
+      setRetryCount(0);
+      
+      // Set performance metrics
+      const totalRecords = hierarchicalData.reduce((count, leader) => {
+        let total = 1; // Count the leader
+        if (leader.children) {
+          leader.children.forEach(brigadista => {
+            total += 1; // Count the brigadista
+            if (brigadista.children) {
+              brigadista.children.forEach(movilizador => {
+                total += 1; // Count the movilizador
+                if (movilizador.children) {
+                  total += movilizador.children.length; // Count ciudadanos
+                }
+              });
+            }
+          });
+        }
+        return count + total;
+      }, 0);
+      
+      setPerformanceMetrics({
+        dataFetchTime,
+        analyticsGenerationTime,
+        totalRecords,
+        cacheHit: cacheStatus.dataCache || cacheStatus.analyticsCache
+      });
+      
+      const totalTime = Date.now() - startTime;
+      console.log(`Data fetch completed in ${totalTime}ms (Data: ${dataFetchTime}ms, Analytics: ${analyticsGenerationTime}ms, Records: ${totalRecords}, Cache Hit: ${cacheStatus.dataCache || cacheStatus.analyticsCache})`);
+      
     } catch (err) {
-      console.error('Error al cargar datos:', err);
-      setError(err instanceof Error ? err.message : 'Error desconocido al cargar datos');
+      const errorMessage = handleError(err);
+      setError(errorMessage);
+      setAnalyticsLoading(false);
+      
+      // Auto-retry for retryable errors
+      if ((err instanceof NetworkError || err instanceof DatabaseError) && retryCount < 3) {
+        const newRetryCount = retryCount + 1;
+        setRetryCount(newRetryCount);
+        
+        console.warn(`Auto-retrying data fetch (attempt ${newRetryCount}/3) in 2 seconds...`);
+        
+        setTimeout(() => {
+          fetchData(true, forceRefresh);
+        }, 2000 * newRetryCount); // Exponential backoff
+      }
     } finally {
       setLoading(false);
     }
@@ -33,12 +136,7 @@ export const useData = () => {
 
   useEffect(() => {
     fetchData();
-    
-    // Actualizar datos cada 5 minutos para mantener analytics actualizados
-    const interval = setInterval(fetchData, 5 * 60 * 1000);
-    
-    return () => clearInterval(interval);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const refetchData = () => {
     fetchData();
@@ -66,8 +164,16 @@ export const useData = () => {
       const results: Person[] = [];
       
       people.forEach(person => {
-        if (person.name.toLowerCase().includes(query.toLowerCase()) ||
-            person.id.toLowerCase().includes(query.toLowerCase())) {
+        const matchesSearch = 
+          person.name.toLowerCase().includes(query.toLowerCase()) ||
+          person.nombre.toLowerCase().includes(query.toLowerCase()) ||
+          person.id.toLowerCase().includes(query.toLowerCase()) ||
+          (person.direccion && person.direccion.toLowerCase().includes(query.toLowerCase())) ||
+          (person.colonia && person.colonia.toLowerCase().includes(query.toLowerCase())) ||
+          (person.seccion && person.seccion.toLowerCase().includes(query.toLowerCase())) ||
+          (person.numero_cel && person.numero_cel.toLowerCase().includes(query.toLowerCase()));
+        
+        if (matchesSearch) {
           results.push(person);
         }
         
@@ -125,49 +231,26 @@ export const useData = () => {
     return filterInHierarchy(data);
   };
 
-  const filterByRegion = (region: string): Person[] => {
-    const filterInHierarchy = (people: Person[]): Person[] => {
-      const results: Person[] = [];
-      
-      people.forEach(person => {
-        if (person.entidad === region) {
-          results.push(person);
-        }
-        
-        if (person.children) {
-          results.push(...filterInHierarchy(person.children));
-        }
-      });
-      
-      return results;
-    };
-    
-    return filterInHierarchy(data);
+  // Add method to force refresh with cache clearing
+  const forceRefresh = () => {
+    DataService.clearCache();
+    fetchData(false, true);
   };
 
-  const getAnalyticsSummary = () => {
-    if (!analytics) return null;
-    
-    return {
-      totalPeople: analytics.totalLideres + analytics.totalBrigadistas + analytics.totalMobilizers + analytics.totalCitizens,
-      conversionRate: analytics.conversionRate,
-      growthRate: analytics.growthRate,
-      dataQuality: analytics.quality.dataCompleteness,
-      lastUpdated
-    };
-  };
   return {
     data,
     analytics,
     loading,
+    analyticsLoading,
     error,
-    lastUpdated,
+    retryCount,
+    lastFetchTime,
+    performanceMetrics,
     refetchData,
+    forceRefresh,
     getRegistrationsByPeriod,
     searchData,
     filterByRole,
     filterByDate,
-    filterByRegion,
-    getAnalyticsSummary,
   };
 };

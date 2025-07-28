@@ -1,14 +1,12 @@
 import React from 'react';
 import { useData } from '../../hooks/useData';
 import HierarchyTable from '../tables/HierarchyTable';
-import { exportToExcel, exportToPDF } from '../../utils/export';
+import { exportToPDF } from '../../utils/export';
 
 const HierarchyPage: React.FC = () => {
   const { data, loading, error, refetchData } = useData();
 
-  const handleExportExcel = (selectedItems: string[]) => {
-    exportToExcel(data, selectedItems);
-  };
+
 
   const handleExportPDF = (selectedItems: string[]) => {
     exportToPDF(data, selectedItems);
@@ -60,7 +58,6 @@ const HierarchyPage: React.FC = () => {
       
       <HierarchyTable 
         data={data} 
-        onExport={handleExportExcel}
         onExportPDF={handleExportPDF}
       />
     </div>

@@ -105,19 +105,16 @@ npm run type-check
 ## Features
 
 ### Analytics Dashboard
-- **Real-time Analytics**: Comprehensive metrics generated from live Supabase data
-- **Performance Indicators**: Leader efficiency, conversion rates, and growth metrics
+- Comprehensive metrics and performance indicators
 - Geographic distribution analysis
 - Temporal pattern tracking
-- Quality metrics and data completeness analysis
-- Predictive analytics and alerts system
+- Real-time registration monitoring
 
 ### Data Management
 - Hierarchical data structure with parent-child relationships
-- Real-time data synchronization with Supabase
+- CRUD operations for all entity types
 - Data validation and verification
 - Contact information management
-- Automatic data quality monitoring
 
 ### Export Capabilities
 - PDF reports with customizable layouts
@@ -130,12 +127,6 @@ npm run type-check
 - Cross-browser compatibility
 - Accessible UI components
 - Custom electoral campaign branding
-
-### Real-time Features
-- Live data updates every 5 minutes
-- Real-time alerts and notifications
-- Dynamic analytics recalculation
-- Performance monitoring dashboard
 
 ## Database Schema
 
@@ -162,14 +153,6 @@ All tables include these standard fields:
 - Brigadiers can have multiple Mobilizers
 - Mobilizers can register multiple Citizens
 
-### Analytics Generation
-The application now generates all analytics in real-time from the Supabase database:
-- **Growth Metrics**: Calculated from actual registration dates
-- **Performance Analytics**: Based on real hierarchical relationships
-- **Quality Metrics**: Derived from data completeness and verification status
-- **Geographic Analysis**: Generated from actual location data
-- **Temporal Patterns**: Calculated from real registration timestamps
-
 ## Recent Tech Stack Upgrade
 
 The application has been recently upgraded to use the latest stable versions of all major dependencies:
@@ -185,7 +168,6 @@ The application has been recently upgraded to use the latest stable versions of 
 - Zero breaking changes requiring code modifications
 - All functionality preserved and tested
 - Performance maintained or improved
-- **Analytics Migration**: Completely migrated from mock data to real Supabase data
 - See `MIGRATION_NOTES.md` for detailed upgrade information
 
 ## Performance
@@ -200,8 +182,6 @@ The application has been recently upgraded to use the latest stable versions of 
 - CSS purging with Tailwind 4.1.11
 - TypeScript strict mode for better performance
 - React 19 concurrent features
-- **Real-time Data Optimization**: Efficient Supabase queries with automatic caching
-- **Analytics Caching**: Smart recalculation only when data changes
 
 ## Troubleshooting
 
@@ -237,32 +217,12 @@ npm run dev
 - Ensure `.env.local` file exists with correct Supabase credentials
 - Verify environment variables start with `VITE_` prefix
 
-**Database Connection Issues:**
-```bash
-# Verify Supabase connection
-# Check that all required tables exist: lideres, brigadistas, movilizadores, ciudadanos
-# Ensure RLS policies are properly configured
-```
-
-**Analytics Not Loading:**
-- Check browser console for Supabase connection errors
-- Verify database tables have data
-- Ensure proper foreign key relationships exist
-
 ## Browser Support
 
 - Chrome (latest)
 - Firefox (latest)
 - Safari (latest)
 - Edge (latest)
-
-## Data Flow
-
-1. **Data Fetching**: Real-time data fetched from Supabase every 5 minutes
-2. **Hierarchy Building**: Data structured into hierarchical relationships
-3. **Analytics Generation**: Complex analytics calculated from real data
-4. **UI Updates**: Components automatically update with new analytics
-5. **Export Generation**: Reports generated from current live data
 
 ## Contributing
 
