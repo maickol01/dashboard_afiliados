@@ -53,6 +53,7 @@ export interface Analytics {
   weeklyRegistrations: { date: string; count: number }[];
   monthlyRegistrations: { date: string; count: number }[];
   leaderPerformance: { name: string; registered: number }[];
+  enhancedLeaderPerformance?: LeaderPerformanceData[];
   conversionRate: number;
   growthRate: number;
   
@@ -110,9 +111,32 @@ export interface Analytics {
     resourceOptimization: { area: string; recommendation: string; impact: number }[];
     patterns: { pattern: string; confidence: number; description: string }[];
   };
+  
+  // Network health analytics
+  networkHealth?: {
+    hierarchicalBalance: NetworkBalanceMetric[];
+    growthPatterns: NetworkGrowthMetric[];
+    structuralHealth: StructuralHealthMetric[];
+    expansionRate: NetworkExpansionMetric[];
+    summary: NetworkHealthSummary;
+  };
+  
+  // Territorial coverage analytics
+  territorial?: TerritorialAnalytics;
 }
 
 export type Period = 'day' | 'week' | 'month';
+
+export interface LeaderPerformanceData {
+  name: string;
+  citizenCount: number;
+  brigadierCount: number;
+  mobilizerCount: number;
+  targetProgress: number;
+  trend: 'up' | 'down' | 'stable';
+  efficiency: number;
+  lastUpdate: Date;
+}
 
 export interface ExportOptions {
   selectedLeaders: string[];
@@ -147,3 +171,47 @@ export {
   isValidationError,
   classifyError
 } from './errors';
+
+// Re-export productivity types for convenience
+export type {
+  WorkerProductivityAnalytics,
+  LeaderProductivityMetric,
+  BrigadierProductivityMetric,
+  MobilizerProductivityMetric,
+  ComparativeMetric
+} from './productivity';
+
+// Re-export network health types for convenience
+export type {
+  NetworkHealthAnalytics,
+  NetworkBalanceMetric,
+  NetworkGrowthMetric,
+  StructuralHealthMetric,
+  NetworkExpansionMetric,
+  NetworkHealthSummary
+} from './networkHealth';
+
+// Re-export territorial types for convenience
+export type {
+  TerritorialAnalytics,
+  TerritorialCoverageMetric,
+  WorkerDensityMetric,
+  TerritorialGapMetric,
+  CitizenWorkerRatioMetric,
+  TerritorialSummary,
+  TerritorialFilter,
+  TerritorialVisualizationData
+} from './territorial';
+
+// Import for use in Analytics interface
+import {
+  NetworkBalanceMetric,
+  NetworkGrowthMetric,
+  StructuralHealthMetric,
+  NetworkExpansionMetric,
+  NetworkHealthSummary
+} from './networkHealth';
+
+import {
+  TerritorialAnalytics
+} from './territorial';

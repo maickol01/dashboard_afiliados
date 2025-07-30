@@ -3,8 +3,9 @@ import { Users, UserPlus, TrendingUp, Target, AlertTriangle, CheckCircle, Clock,
 import { useData } from '../../hooks/useData';
 import { Period } from '../../types';
 import LineChart from '../charts/LineChart';
-import BarChart from '../charts/BarChart';
+import EnhancedLeaderPerformanceChart from '../charts/EnhancedLeaderPerformanceChart';
 import PerformanceMonitor from '../common/PerformanceMonitor';
+import { CacheMonitor } from './CacheMonitor';
 import EfficiencyMetrics from './sections/EfficiencyMetrics';
 import GeographicAnalysis from './sections/GeographicAnalysis';
 import TemporalAnalysis from './sections/TemporalAnalysis';
@@ -13,22 +14,47 @@ import GoalsAndObjectives from './sections/GoalsAndObjectives';
 import AlertsPanel from './sections/AlertsPanel';
 import PredictiveAnalytics from './sections/PredictiveAnalytics';
 import ComparisonTools from './sections/ComparisonTools';
+import WorkerProductivityAnalytics from './productivity/WorkerProductivityAnalytics';
+import NetworkHealthAnalytics from './sections/NetworkHealthAnalytics';
+import RealTimeIndicator from './RealTimeIndicator';
+import UpdateDetector from './UpdateDetector';
+import UpdateNotification from '../common/UpdateNotification';
+import { UpdateEvent } from '../../services/realTimeUpdateService';
 
 const AnalyticsPage: React.FC = () => {
-  const { 
+  const {
     data,
-    analytics, 
-    loading, 
-    analyticsLoading, 
-    error, 
-    performanceMetrics, 
-    lastFetchTime, 
-    refetchData, 
-    forceRefresh, 
-    getRegistrationsByPeriod 
+    analytics,
+    loading,
+    analyticsLoading,
+    error,
+    performanceMetrics,
+    lastFetchTime,
+    refetchData,
+    forceRefresh,
+    getRegistrationsByPeriod,
+    getLeaderPerformanceByPeriod,
+    // Real-time update properties
+    realTimeStatus,
+    recentUpdates,
+    triggerRealTimeRefresh,
+    checkRealTimeConnection,
+    detectManualUpdates,
+    clearRealTimeError,
+    clearRecentUpdates
   } = useData();
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('day');
   const [activeSection, setActiveSection] = useState<string>('overview');
+  const [showUpdateNotification, setShowUpdateNotification] = useState(false);
+  const [notificationUpdates, setNotificationUpdates] = useState<UpdateEvent[]>([]);
+
+  // Show notification when new updates are detected
+  React.useEffect(() => {
+    if (recentUpdates.length > 0 && recentUpdates.length !== notificationUpdates.length) {
+      setNotificationUpdates([...recentUpdates]);
+      setShowUpdateNotification(true);
+    }
+  }, [recentUpdates, notificationUpdates.length]);
 
   if (loading) {
     return (
@@ -66,6 +92,7 @@ const AnalyticsPage: React.FC = () => {
   if (!analytics) return null;
 
   const registrationData = getRegistrationsByPeriod(selectedPeriod);
+  const leaderPerformanceData = getLeaderPerformanceByPeriod(selectedPeriod);
 
   const stats = [
     {
@@ -124,17 +151,12 @@ const AnalyticsPage: React.FC = () => {
       icon: CheckCircle,
       color: 'text-accent',
     },
-    {
-      name: 'Tiempo Promedio',
-      value: `${analytics.efficiency.registrationSpeed.average}h`,
-      description: 'Tiempo promedio de registro',
-      icon: Clock,
-      color: 'text-neutral',
-    },
   ];
 
   const sections = [
     { id: 'overview', name: 'Resumen General', icon: Target },
+    { id: 'productivity', name: 'Productividad de Trabajadores', icon: Users },
+    { id: 'network', name: 'Salud de Red', icon: Users },
     { id: 'efficiency', name: 'Eficiencia', icon: TrendingUp },
     { id: 'geographic', name: 'Análisis Geográfico', icon: MapPin },
     { id: 'temporal', name: 'Análisis Temporal', icon: Clock },
@@ -147,6 +169,30 @@ const AnalyticsPage: React.FC = () => {
 
   const renderSection = () => {
     switch (activeSection) {
+      case 'productivity':
+        try {
+          return <WorkerProductivityAnalytics hierarchicalData={data || []} loading={loading} />;
+        } catch (error) {
+          console.error('Error rendering WorkerProductivityAnalytics:', error);
+          return (
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Error en Análisis de Productividad</h3>
+              <p className="text-gray-500 text-center py-8">No se pudo cargar el análisis de productividad. Intenta recargar la página.</p>
+            </div>
+          );
+        }
+      case 'network':
+        try {
+          return <NetworkHealthAnalytics analytics={analytics} />;
+        } catch (error) {
+          console.error('Error rendering NetworkHealthAnalytics:', error);
+          return (
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Error en Análisis de Salud de Red</h3>
+              <p className="text-gray-500 text-center py-8">No se pudo cargar el análisis de salud de red. Intenta recargar la página.</p>
+            </div>
+          );
+        }
       case 'efficiency':
         return <EfficiencyMetrics analytics={analytics} />;
       case 'geographic':
@@ -182,9 +228,8 @@ const AnalyticsPage: React.FC = () => {
                           <dt className="text-sm font-medium text-gray-500 truncate">{stat.name}</dt>
                           <dd className="flex items-center">
                             <span className="text-lg font-semibold text-gray-900">{stat.value}</span>
-                            <span className={`ml-2 text-sm font-medium ${
-                              stat.trend === 'up' ? 'text-green-600' : 'text-red-600'
-                            }`}>
+                            <span className={`ml-2 text-sm font-medium ${stat.trend === 'up' ? 'text-green-600' : 'text-red-600'
+                              }`}>
                               {stat.change}
                             </span>
                           </dd>
@@ -197,7 +242,7 @@ const AnalyticsPage: React.FC = () => {
             </div>
 
             {/* KPIs mejorados */}
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {kpis.map((kpi) => (
                 <div key={kpi.name} className="bg-white overflow-hidden shadow-md rounded-lg">
                   <div className="p-5">
@@ -244,15 +289,13 @@ const AnalyticsPage: React.FC = () => {
                     <button
                       key={period}
                       onClick={() => setSelectedPeriod(period)}
-                      className={`px-4 py-2 text-sm font-medium border ${
-                        selectedPeriod === period
-                          ? 'bg-primary text-white border-primary'
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                      } ${
-                        period === 'day' ? 'rounded-l-md' : 
-                        period === 'month' ? 'rounded-r-md' : 
-                        'border-l-0'
-                      }`}
+                      className={`px-4 py-2 text-sm font-medium border ${selectedPeriod === period
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        } ${period === 'day' ? 'rounded-l-md' :
+                          period === 'month' ? 'rounded-r-md' :
+                            'border-l-0'
+                        }`}
                     >
                       {period === 'day' ? 'Día' : period === 'week' ? 'Semana' : 'Mes'}
                     </button>
@@ -261,16 +304,24 @@ const AnalyticsPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Gráficos principales */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <LineChart
-                data={registrationData}
-                title={`Ciudadanos Registrados por ${selectedPeriod === 'day' ? 'Día' : selectedPeriod === 'week' ? 'Semana' : 'Mes'}`}
-              />
-              <BarChart
-                data={analytics.leaderPerformance}
-                title="Rendimiento de Líderes"
-              />
+            {/* Gráficos principales - Layout mejorado para mejor visibilidad */}
+            <div className="space-y-6">
+              {/* Gráfico de registros - ancho completo para mejor visibilidad */}
+              <div className="w-full">
+                <LineChart
+                  data={registrationData}
+                  title={`Ciudadanos Registrados por ${selectedPeriod === 'day' ? 'Día' : selectedPeriod === 'week' ? 'Semana' : 'Mes'}`}
+                />
+              </div>
+
+              {/* Gráfico de rendimiento de líderes - ancho completo para mejor visibilidad */}
+              <div className="w-full">
+                <EnhancedLeaderPerformanceChart
+                  data={leaderPerformanceData}
+                  title="Rendimiento de Líderes"
+                  period={selectedPeriod}
+                />
+              </div>
             </div>
 
             {/* Progreso hacia meta general */}
@@ -282,7 +333,7 @@ const AnalyticsPage: React.FC = () => {
                   <span>{analytics.goals.overallProgress.current} / {analytics.goals.overallProgress.target}</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div 
+                  <div
                     className="bg-primary h-3 rounded-full transition-all duration-500"
                     style={{ width: `${Math.min(analytics.goals.overallProgress.percentage, 100)}%` }}
                   ></div>
@@ -302,6 +353,28 @@ const AnalyticsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Update Notification */}
+      {showUpdateNotification && (
+        <UpdateNotification
+          updates={notificationUpdates}
+          isRefreshing={realTimeStatus.isRefreshing}
+          onDismiss={() => {
+            setShowUpdateNotification(false);
+            setNotificationUpdates([]);
+          }}
+          autoHideDelay={5000}
+        />
+      )}
+
+      {/* Update Detector - invisible component for fallback update detection */}
+      <UpdateDetector
+        realTimeStatus={realTimeStatus}
+        onDetectUpdates={detectManualUpdates}
+        onTriggerRefresh={triggerRealTimeRefresh}
+        fallbackInterval={30000} // Check every 30 seconds when real-time is down
+        enabled={true}
+      />
+
       {/* Navegación de secciones */}
       <div className="bg-white p-4 rounded-lg shadow-md">
         <div className="flex flex-wrap gap-2">
@@ -309,11 +382,10 @@ const AnalyticsPage: React.FC = () => {
             <button
               key={section.id}
               onClick={() => setActiveSection(section.id)}
-              className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
-                activeSection === section.id
-                  ? 'bg-primary text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${activeSection === section.id
+                ? 'bg-primary text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               <section.icon className="h-4 w-4 mr-2 shrink-0" />
               <span className="truncate">{section.name}</span>
@@ -322,6 +394,16 @@ const AnalyticsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Real-Time Updates Indicator */}
+      <RealTimeIndicator
+        status={realTimeStatus}
+        recentUpdates={recentUpdates}
+        onRefresh={triggerRealTimeRefresh}
+        onCheckConnection={checkRealTimeConnection}
+        onClearError={clearRealTimeError}
+        onClearUpdates={clearRecentUpdates}
+      />
+
       {/* Performance Monitor */}
       <PerformanceMonitor
         performanceMetrics={performanceMetrics}
@@ -329,6 +411,9 @@ const AnalyticsPage: React.FC = () => {
         lastFetchTime={lastFetchTime}
         onForceRefresh={forceRefresh}
       />
+
+      {/* Cache Monitor */}
+      <CacheMonitor />
 
       {/* Contenido de la sección activa */}
       {renderSection()}

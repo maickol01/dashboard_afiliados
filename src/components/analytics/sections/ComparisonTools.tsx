@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Calendar, BarChart3, TrendingUp, Users, MapPin, Clock } from 'lucide-react';
 import { Analytics, Person } from '../../../types';
-import { Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, ComposedChart } from 'recharts';
+import { Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar, ComposedChart, ResponsiveContainer } from 'recharts';
 
 interface ComparisonToolsProps {
   analytics: Analytics;
@@ -348,17 +348,19 @@ const ComparisonTools: React.FC<ComparisonToolsProps> = ({ analytics, hierarchic
               </div>
             </div>
 
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={territorialComparisons.slice(0, 10)}>
+            <div className="w-full h-[400px] sm:h-[450px] lg:h-[500px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={territorialComparisons.slice(0, 10)} margin={{ top: 20, right: 30, left: 20, bottom: 100 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="territory" angle={-45} textAnchor="end" height={100} />
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="currentCount" fill="#235B4E" name="Actual" />
-                <Bar dataKey="previousCount" fill="#BC955C" name="Anterior" />
-              </BarChart>
-            </ResponsiveContainer>
+                  <Bar dataKey="currentCount" fill="#235B4E" name="Actual" isAnimationActive={false} />
+                  <Bar dataKey="previousCount" fill="#BC955C" name="Anterior" isAnimationActive={false} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {territorialComparisons.slice(0, 9).map((territory) => (
@@ -400,17 +402,19 @@ const ComparisonTools: React.FC<ComparisonToolsProps> = ({ analytics, hierarchic
       case 'leaders':
         return (
           <div className="space-y-6">
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={leaderComparisons}>
+            <div className="w-full h-[400px] sm:h-[450px] lg:h-[500px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={leaderComparisons} margin={{ top: 20, right: 30, left: 20, bottom: 100 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="registered" fill="#235B4E" name="Actual" />
-                <Bar dataKey="previousRegistered" fill="#9F2241" name="Anterior" />
-              </BarChart>
-            </ResponsiveContainer>
+                  <Bar dataKey="registered" fill="#235B4E" name="Actual" isAnimationActive={false} />
+                  <Bar dataKey="previousRegistered" fill="#9F2241" name="Anterior" isAnimationActive={false} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {leaderComparisons.slice(0, 6).map((leader) => (
@@ -442,19 +446,21 @@ const ComparisonTools: React.FC<ComparisonToolsProps> = ({ analytics, hierarchic
         return (
           <div className="space-y-6">
             {/* Strategy Impact Chart */}
-            <ResponsiveContainer width="100%" height={400}>
-              <ComposedChart data={strategyAnalysis}>
+            <div className="w-full h-[400px] sm:h-[450px] lg:h-[500px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={strategyAnalysis} margin={{ top: 20, right: 30, left: 20, bottom: 100 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
                 <YAxis yAxisId="left" />
                 <YAxis yAxisId="right" orientation="right" />
                 <Tooltip />
                 <Legend />
-                <Bar yAxisId="left" dataKey="beforeAvg" fill="#BC955C" name="Antes" />
-                <Bar yAxisId="left" dataKey="afterAvg" fill="#235B4E" name="Después" />
-                <Line yAxisId="right" type="monotone" dataKey="improvement" stroke="#9F2241" strokeWidth={3} name="Mejora %" />
-              </ComposedChart>
-            </ResponsiveContainer>
+                <Bar yAxisId="left" dataKey="beforeAvg" fill="#BC955C" name="Antes" isAnimationActive={false} />
+                <Bar yAxisId="left" dataKey="afterAvg" fill="#235B4E" name="Después" isAnimationActive={false} />
+                <Line yAxisId="right" type="monotone" dataKey="improvement" stroke="#9F2241" strokeWidth={3} name="Mejora %" isAnimationActive={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
 
             {/* Strategy Analysis Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

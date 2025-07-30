@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, Award, AlertCircle, Clock, Users, Target } from 'lucide-react';
+import { TrendingUp, Award, AlertCircle, Clock, Users, Target } from 'lucide-react';
 import { Analytics } from '../../../types';
 
 interface EfficiencyMetricsProps {
@@ -9,70 +9,10 @@ interface EfficiencyMetricsProps {
 const EfficiencyMetrics: React.FC<EfficiencyMetricsProps> = ({ analytics }) => {
   const { efficiency } = analytics;
 
-  // Calculate real conversion rates from database
-  const overallConversionRate = analytics.totalCitizens > 0 
-    ? (analytics.totalCitizens / (analytics.totalLideres + analytics.totalBrigadistas + analytics.totalMobilizers)) * 100 
-    : 0;
 
-  // Calculate productivity metrics based on actual registrations
-  const avgRegistrationsPerLeader = analytics.totalLideres > 0 
-    ? analytics.totalCitizens / analytics.totalLideres 
-    : 0;
-
-  const avgRegistrationsPerBrigadier = analytics.totalBrigadistas > 0 
-    ? analytics.totalCitizens / analytics.totalBrigadistas 
-    : 0;
 
   return (
     <div className="space-y-6">
-      {/* Real-time Performance Overview */}
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Métricas de Rendimiento en Tiempo Real</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="text-center p-4 bg-blue-50 rounded-lg">
-            <Users className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-blue-600">{overallConversionRate.toFixed(1)}%</div>
-            <div className="text-sm text-gray-600">Tasa de Conversión</div>
-          </div>
-          <div className="text-center p-4 bg-green-50 rounded-lg">
-            <Target className="h-8 w-8 text-green-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-green-600">{avgRegistrationsPerLeader.toFixed(1)}</div>
-            <div className="text-sm text-gray-600">Ciudadanos/Líder</div>
-          </div>
-          <div className="text-center p-4 bg-purple-50 rounded-lg">
-            <TrendingUp className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-purple-600">{avgRegistrationsPerBrigadier.toFixed(1)}</div>
-            <div className="text-sm text-gray-600">Ciudadanos/Brigadista</div>
-          </div>
-          <div className="text-center p-4 bg-orange-50 rounded-lg">
-            <Clock className="h-8 w-8 text-orange-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-orange-600">{analytics.conversionRate.toFixed(1)}%</div>
-            <div className="text-sm text-gray-600">Verificación</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Métricas de velocidad basadas en timestamps reales */}
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Velocidad de Registro (Basada en created_at)</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="text-center p-4 bg-green-50 rounded-lg">
-            <Clock className="h-8 w-8 text-green-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-green-600">{efficiency.registrationSpeed.average.toFixed(1)}h</div>
-            <div className="text-sm text-gray-600">Promedio</div>
-          </div>
-          <div className="text-center p-4 bg-blue-50 rounded-lg">
-            <TrendingUp className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-blue-600">{efficiency.registrationSpeed.fastest.toFixed(1)}h</div>
-            <div className="text-sm text-gray-600">Más Rápido</div>
-          </div>
-          <div className="text-center p-4 bg-red-50 rounded-lg">
-            <TrendingDown className="h-8 w-8 text-red-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-red-600">{efficiency.registrationSpeed.slowest.toFixed(1)}h</div>
-            <div className="text-sm text-gray-600">Más Lento</div>
-          </div>
-        </div>
-      </div>
 
       {/* Top Performers basado en registros reales */}
       <div className="bg-white p-6 rounded-lg shadow-md">

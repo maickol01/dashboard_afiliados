@@ -1,7 +1,7 @@
 import React from 'react';
 import { TrendingUp, Target, Map, Building2, Hash } from 'lucide-react';
 import { Analytics } from '../../../types';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Area, AreaChart } from 'recharts';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Area, AreaChart, ResponsiveContainer } from 'recharts';
 
 interface GeographicAnalysisProps {
   analytics: Analytics;
@@ -72,8 +72,9 @@ const GeographicAnalysis: React.FC<GeographicAnalysisProps> = ({ analytics }) =>
           {/* Top 20 Secciones con Mayor Registro */}
           <div className="mb-8">
             <h4 className="text-md font-medium text-gray-800 mb-4">Top 20 Secciones con Mayor Registro</h4>
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={seccionData.slice(0, 20)}>
+            <div className="w-full h-[400px] sm:h-[450px] lg:h-[500px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={seccionData.slice(0, 20)} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
                   dataKey="region" 
@@ -87,21 +88,23 @@ const GeographicAnalysis: React.FC<GeographicAnalysisProps> = ({ analytics }) =>
                   formatter={(value) => [value, 'Registros']}
                   labelFormatter={(label) => `Sección: ${label}`}
                 />
-                <Bar dataKey="count" fill="#235B4E" name="Registros">
+                <Bar dataKey="count" fill="#235B4E" name="Registros" isAnimationActive={false}>
                   {seccionData.slice(0, 20).map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
           {/* Distribución de Rendimiento por Secciones */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <div>
               <h4 className="text-md font-medium text-gray-800 mb-4">Distribución de Rendimiento</h4>
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={seccionData.slice(0, 15)}>
+              <div className="w-full h-[300px] sm:h-[350px] lg:h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={seccionData.slice(0, 15)} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="region" 
@@ -119,9 +122,11 @@ const GeographicAnalysis: React.FC<GeographicAnalysisProps> = ({ analytics }) =>
                     fill="#235B4E" 
                     fillOpacity={0.7}
                     name="Registros"
+                    isAnimationActive={false}
                   />
-                </AreaChart>
-              </ResponsiveContainer>
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
             
             <div>
@@ -263,8 +268,9 @@ const GeographicAnalysis: React.FC<GeographicAnalysisProps> = ({ analytics }) =>
             <Map className="h-5 w-5 text-secondary mr-2" />
             Contexto por Entidad Federativa
           </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
+          <div className="w-full h-[300px] sm:h-[350px] lg:h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
               <Pie
                 data={entidadData}
                 cx="50%"
@@ -274,6 +280,7 @@ const GeographicAnalysis: React.FC<GeographicAnalysisProps> = ({ analytics }) =>
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="count"
+                isAnimationActive={false}
               >
                 {entidadData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -281,7 +288,8 @@ const GeographicAnalysis: React.FC<GeographicAnalysisProps> = ({ analytics }) =>
               </Pie>
               <Tooltip formatter={(value) => [value, 'Registros']} />
             </PieChart>
-          </ResponsiveContainer>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow-md">
@@ -289,8 +297,9 @@ const GeographicAnalysis: React.FC<GeographicAnalysisProps> = ({ analytics }) =>
             <Building2 className="h-5 w-5 text-accent mr-2" />
             Contexto por Municipios (Top 8)
           </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={municipioData.slice(0, 8)} layout="horizontal">
+          <div className="w-full h-[300px] sm:h-[350px] lg:h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={municipioData.slice(0, 8)} layout="horizontal" margin={{ top: 20, right: 30, left: 80, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" />
               <YAxis 
@@ -300,9 +309,10 @@ const GeographicAnalysis: React.FC<GeographicAnalysisProps> = ({ analytics }) =>
                 fontSize={10}
               />
               <Tooltip />
-              <Bar dataKey="count" fill="#9F2241" name="Registros" />
-            </BarChart>
-          </ResponsiveContainer>
+              <Bar dataKey="count" fill="#9F2241" name="Registros" isAnimationActive={false} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 

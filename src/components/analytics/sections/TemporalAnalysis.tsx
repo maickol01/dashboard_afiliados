@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Clock, Calendar, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Analytics } from '../../../types';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar, ResponsiveContainer } from 'recharts';
 
 interface TemporalAnalysisProps {
   analytics: Analytics;
@@ -41,61 +41,69 @@ const TemporalAnalysis: React.FC<TemporalAnalysisProps> = ({ analytics }) => {
             return <div className="text-center text-gray-500 py-8">No hay datos de patrones por hora disponibles</div>;
           }
           return (
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={temporal.hourlyPatterns}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="hour" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="registrations" fill="#235B4E" name="Registros" />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="w-full h-[400px] sm:h-[450px] lg:h-[500px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={temporal.hourlyPatterns} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="hour" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="registrations" fill="#235B4E" name="Registros" isAnimationActive={false} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           );
         case 'weekly':
           if (!temporal.weeklyPatterns || temporal.weeklyPatterns.length === 0) {
             return <div className="text-center text-gray-500 py-8">No hay datos de patrones semanales disponibles</div>;
           }
           return (
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={temporal.weeklyPatterns}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="registrations" fill="#9F2241" name="Registros" />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="w-full h-[400px] sm:h-[450px] lg:h-[500px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={temporal.weeklyPatterns} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="registrations" fill="#9F2241" name="Registros" isAnimationActive={false} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           );
         case 'seasonal':
           if (!temporal.seasonality || temporal.seasonality.length === 0) {
             return <div className="text-center text-gray-500 py-8">No hay datos de estacionalidad disponibles</div>;
           }
           return (
-            <ResponsiveContainer width="100%" height={400}>
-              <LineChart data={temporal.seasonality}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="registrations" 
-                  stroke="#BC955C" 
-                  strokeWidth={3}
-                  name="Registros"
-                  dot={{ fill: '#BC955C', strokeWidth: 2, r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="w-full h-[400px] sm:h-[450px] lg:h-[500px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={temporal.seasonality} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="registrations" 
+                    stroke="#BC955C" 
+                    strokeWidth={3}
+                    name="Registros"
+                    dot={{ fill: '#BC955C', strokeWidth: 2, r: 6 }}
+                    isAnimationActive={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           );
         case 'projections':
           if (!temporal.projections || temporal.projections.length === 0) {
             return <div className="text-center text-gray-500 py-8">No hay datos de proyecciones disponibles</div>;
           }
           return (
-            <ResponsiveContainer width="100%" height={400}>
-              <LineChart data={temporal.projections}>
+            <div className="w-full h-[400px] sm:h-[450px] lg:h-[500px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={temporal.projections} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
@@ -109,6 +117,7 @@ const TemporalAnalysis: React.FC<TemporalAnalysisProps> = ({ analytics }) => {
                   strokeDasharray="5 5"
                   name="Proyección"
                   dot={{ fill: '#6F7271', strokeWidth: 2, r: 4 }}
+                  isAnimationActive={false}
                 />
                 <Line 
                   type="monotone" 
@@ -117,9 +126,11 @@ const TemporalAnalysis: React.FC<TemporalAnalysisProps> = ({ analytics }) => {
                   strokeWidth={1}
                   name="Confianza %"
                   dot={false}
+                  isAnimationActive={false}
                 />
-              </LineChart>
-            </ResponsiveContainer>
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           );
         default:
           return <div className="text-center text-gray-500 py-8">Vista no disponible</div>;
