@@ -6,22 +6,31 @@ import LineChart from '../charts/LineChart';
 import EnhancedLeaderPerformanceChart from '../charts/EnhancedLeaderPerformanceChart';
 import PerformanceMonitor from '../common/PerformanceMonitor';
 import { CacheMonitor } from './CacheMonitor';
-import EfficiencyMetrics from './sections/EfficiencyMetrics';
 import GeographicAnalysis from './sections/GeographicAnalysis';
 import TemporalAnalysis from './sections/TemporalAnalysis';
 import QualityMetrics from './sections/QualityMetrics';
 import GoalsAndObjectives from './sections/GoalsAndObjectives';
 import AlertsPanel from './sections/AlertsPanel';
-import PredictiveAnalytics from './sections/PredictiveAnalytics';
 import ComparisonTools from './sections/ComparisonTools';
 import WorkerProductivityAnalytics from './productivity/WorkerProductivityAnalytics';
-import NetworkHealthAnalytics from './sections/NetworkHealthAnalytics';
 import RealTimeIndicator from './RealTimeIndicator';
 import UpdateDetector from './UpdateDetector';
 import UpdateNotification from '../common/UpdateNotification';
 import { UpdateEvent } from '../../services/realTimeUpdateService';
 
 const AnalyticsPage: React.FC = () => {
+  // Define sections array first so it can be used in validation
+  const sections = [
+    { id: 'overview', name: 'Resumen General', icon: Target },
+    { id: 'productivity', name: 'Productividad de Trabajadores', icon: Users },
+    { id: 'geographic', name: 'Análisis Geográfico', icon: MapPin },
+    { id: 'temporal', name: 'Análisis Temporal', icon: Clock },
+    { id: 'quality', name: 'Calidad', icon: CheckCircle },
+    { id: 'goals', name: 'Metas y Objetivos', icon: Target },
+    { id: 'alerts', name: 'Alertas', icon: AlertTriangle },
+    { id: 'comparison', name: 'Comparativas', icon: BarChart3 },
+  ];
+
   const {
     data,
     analytics,
@@ -47,6 +56,36 @@ const AnalyticsPage: React.FC = () => {
   const [activeSection, setActiveSection] = useState<string>('overview');
   const [showUpdateNotification, setShowUpdateNotification] = useState(false);
   const [notificationUpdates, setNotificationUpdates] = useState<UpdateEvent[]>([]);
+
+  // Define valid section IDs for validation
+  const validSectionIds = sections.map(section => section.id);
+  
+  // Eliminated sections that should redirect to overview
+  const eliminatedSections = ['network', 'efficiency', 'predictions'];
+
+  // Validate and sanitize activeSection
+  React.useEffect(() => {
+    if (eliminatedSections.includes(activeSection)) {
+      // Redirect to overview if activeSection is set to an eliminated section
+      setActiveSection('overview');
+    } else if (!validSectionIds.includes(activeSection)) {
+      // Redirect to overview if activeSection is not a valid section ID
+      setActiveSection('overview');
+    }
+  }, [activeSection, validSectionIds]);
+
+  // Safe setter function that validates section IDs
+  const setActiveSectionSafe = (sectionId: string) => {
+    if (eliminatedSections.includes(sectionId)) {
+      // Redirect to overview if trying to set an eliminated section
+      setActiveSection('overview');
+    } else if (!validSectionIds.includes(sectionId)) {
+      // Redirect to overview if trying to set an invalid section ID
+      setActiveSection('overview');
+    } else {
+      setActiveSection(sectionId);
+    }
+  };
 
   // Show notification when new updates are detected
   React.useEffect(() => {
@@ -153,20 +192,6 @@ const AnalyticsPage: React.FC = () => {
     },
   ];
 
-  const sections = [
-    { id: 'overview', name: 'Resumen General', icon: Target },
-    { id: 'productivity', name: 'Productividad de Trabajadores', icon: Users },
-    { id: 'network', name: 'Salud de Red', icon: Users },
-    { id: 'efficiency', name: 'Eficiencia', icon: TrendingUp },
-    { id: 'geographic', name: 'Análisis Geográfico', icon: MapPin },
-    { id: 'temporal', name: 'Análisis Temporal', icon: Clock },
-    { id: 'quality', name: 'Calidad', icon: CheckCircle },
-    { id: 'goals', name: 'Metas y Objetivos', icon: Target },
-    { id: 'alerts', name: 'Alertas', icon: AlertTriangle },
-    { id: 'predictions', name: 'Predicciones', icon: Users },
-    { id: 'comparison', name: 'Comparativas', icon: BarChart3 },
-  ];
-
   const renderSection = () => {
     switch (activeSection) {
       case 'productivity':
@@ -181,20 +206,6 @@ const AnalyticsPage: React.FC = () => {
             </div>
           );
         }
-      case 'network':
-        try {
-          return <NetworkHealthAnalytics analytics={analytics} />;
-        } catch (error) {
-          console.error('Error rendering NetworkHealthAnalytics:', error);
-          return (
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Error en Análisis de Salud de Red</h3>
-              <p className="text-gray-500 text-center py-8">No se pudo cargar el análisis de salud de red. Intenta recargar la página.</p>
-            </div>
-          );
-        }
-      case 'efficiency':
-        return <EfficiencyMetrics analytics={analytics} />;
       case 'geographic':
         return <GeographicAnalysis analytics={analytics} />;
       case 'temporal':
@@ -205,8 +216,6 @@ const AnalyticsPage: React.FC = () => {
         return <GoalsAndObjectives analytics={analytics} />;
       case 'alerts':
         return <AlertsPanel analytics={analytics} />;
-      case 'predictions':
-        return <PredictiveAnalytics analytics={analytics} />;
       case 'comparison':
         return <ComparisonTools analytics={analytics} hierarchicalData={data} />;
       default:
@@ -352,7 +361,7 @@ const AnalyticsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="analytics-page">
       {/* Update Notification */}
       {showUpdateNotification && (
         <UpdateNotification
@@ -381,7 +390,7 @@ const AnalyticsPage: React.FC = () => {
           {sections.map((section) => (
             <button
               key={section.id}
-              onClick={() => setActiveSection(section.id)}
+              onClick={() => setActiveSectionSafe(section.id)}
               className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${activeSection === section.id
                 ? 'bg-primary text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'

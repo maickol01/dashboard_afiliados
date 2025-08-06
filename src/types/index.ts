@@ -112,14 +112,7 @@ export interface Analytics {
     patterns: { pattern: string; confidence: number; description: string }[];
   };
   
-  // Network health analytics
-  networkHealth?: {
-    hierarchicalBalance: NetworkBalanceMetric[];
-    growthPatterns: NetworkGrowthMetric[];
-    structuralHealth: StructuralHealthMetric[];
-    expansionRate: NetworkExpansionMetric[];
-    summary: NetworkHealthSummary;
-  };
+
   
   // Territorial coverage analytics
   territorial?: TerritorialAnalytics;
@@ -181,15 +174,7 @@ export type {
   ComparativeMetric
 } from './productivity';
 
-// Re-export network health types for convenience
-export type {
-  NetworkHealthAnalytics,
-  NetworkBalanceMetric,
-  NetworkGrowthMetric,
-  StructuralHealthMetric,
-  NetworkExpansionMetric,
-  NetworkHealthSummary
-} from './networkHealth';
+
 
 // Re-export territorial types for convenience
 export type {
@@ -203,14 +188,7 @@ export type {
   TerritorialVisualizationData
 } from './territorial';
 
-// Import for use in Analytics interface
-import {
-  NetworkBalanceMetric,
-  NetworkGrowthMetric,
-  StructuralHealthMetric,
-  NetworkExpansionMetric,
-  NetworkHealthSummary
-} from './networkHealth';
+
 
 import {
   TerritorialAnalytics
