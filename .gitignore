@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 .env
 .kiro
+NAVOJOA.xlsx
+NAVOJOA.pdf

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { BarChart3, Users, Menu, X } from 'lucide-react';
+import { BarChart3, Users, Menu, X, MapPin, CheckCircle } from 'lucide-react';
+
+export type PageType = 'analytics' | 'geographic' | 'quality' | 'hierarchy';
 
 interface LayoutProps {
   children: React.ReactNode;
-  currentPage: 'analytics' | 'hierarchy';
-  onPageChange: (page: 'analytics' | 'hierarchy') => void;
+  currentPage: PageType;
+  onPageChange: (page: PageType) => void;
 }
 
 const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) => {
@@ -12,6 +14,8 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
 
   const navigation = [
     { name: 'Analytics', key: 'analytics', icon: BarChart3 },
+    { name: 'Análisis Geográfico', key: 'geographic', icon: MapPin },
+    { name: 'Calidad de Datos', key: 'quality', icon: CheckCircle },
     { name: 'Tabla Jerárquica', key: 'hierarchy', icon: Users },
   ];
 
@@ -35,7 +39,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
               <button
                 key={item.key}
                 onClick={() => {
-                  onPageChange(item.key as 'analytics' | 'hierarchy');
+                  onPageChange(item.key as PageType);
                   setMobileMenuOpen(false);
                 }}
                 className={`w-full flex items-center px-4 py-3 text-left transition-colors ${
@@ -65,7 +69,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
                   {navigation.map((item) => (
                     <li key={item.key}>
                       <button
-                        onClick={() => onPageChange(item.key as 'analytics' | 'hierarchy')}
+                        onClick={() => onPageChange(item.key as PageType)}
                         className={`w-full flex items-center gap-x-3 rounded-md px-2 py-2 text-sm font-semibold transition-colors ${
                           currentPage === item.key
                             ? 'bg-primary text-white'
@@ -97,7 +101,9 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
           <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
             <div className="flex flex-1 items-center">
               <h2 className="text-xl font-semibold text-gray-900">
-                {currentPage === 'analytics' ? 'Analytics' : 'Jerarquía'}
+                {currentPage === 'analytics' ? 'Analytics' : 
+                 currentPage === 'geographic' ? 'Análisis Geográfico' :
+                 currentPage === 'quality' ? 'Calidad de Datos' : 'Jerarquía'}
               </h2>
             </div>
           </div>

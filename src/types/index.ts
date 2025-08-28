@@ -53,6 +53,7 @@ export interface Analytics {
   weeklyRegistrations: { date: string; count: number }[];
   monthlyRegistrations: { date: string; count: number }[];
   leaderPerformance: { name: string; registered: number }[];
+  enhancedLeaderPerformance?: LeaderPerformanceData[];
   conversionRate: number;
   growthRate: number;
   
@@ -110,9 +111,25 @@ export interface Analytics {
     resourceOptimization: { area: string; recommendation: string; impact: number }[];
     patterns: { pattern: string; confidence: number; description: string }[];
   };
+  
+
+  
+  // Territorial coverage analytics
+  territorial?: TerritorialAnalytics;
 }
 
 export type Period = 'day' | 'week' | 'month';
+
+export interface LeaderPerformanceData {
+  name: string;
+  citizenCount: number;
+  brigadierCount: number;
+  mobilizerCount: number;
+  targetProgress: number;
+  trend: 'up' | 'down' | 'stable';
+  efficiency: number;
+  lastUpdate: Date;
+}
 
 export interface ExportOptions {
   selectedLeaders: string[];
@@ -147,3 +164,45 @@ export {
   isValidationError,
   classifyError
 } from './errors';
+
+// Re-export productivity types for convenience
+export type {
+  WorkerProductivityAnalytics,
+  LeaderProductivityMetric,
+  BrigadierProductivityMetric,
+  MobilizerProductivityMetric,
+  ComparativeMetric
+} from './productivity';
+
+
+
+// Re-export territorial types for convenience
+export type {
+  TerritorialAnalytics,
+  TerritorialCoverageMetric,
+  WorkerDensityMetric,
+  TerritorialGapMetric,
+  CitizenWorkerRatioMetric,
+  TerritorialSummary,
+  TerritorialFilter,
+  TerritorialVisualizationData
+} from './territorial';
+
+// Re-export Navojoa electoral types for convenience
+export type {
+  NavojoaElectoralSection,
+  ElectoralKPIs,
+  KPICardsProps,
+  SectionStackedBarChartProps,
+  SectionHeatMapProps,
+  HeatMapCell,
+  SectionDataTransformer,
+  NavojoaElectoralAnalytics,
+  ElectoralDataError
+} from './navojoa-electoral';
+
+export { NAVOJOA_CONSTANTS } from './navojoa-electoral';
+
+import {
+  TerritorialAnalytics
+} from './territorial';

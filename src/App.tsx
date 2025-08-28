@@ -1,21 +1,26 @@
 import React, { useState } from 'react';
-import Layout from './components/layout/Layout';
-import AnalyticsPage from './components/analytics/AnalyticsPage';
+import Layout, { PageType } from './components/layout/Layout';
+import ConsolidatedAnalyticsPage from './components/analytics/ConsolidatedAnalyticsPage';
 import HierarchyPage from './components/hierarchy/HierarchyPage';
+import { GeographicAnalysisPage, DataQualityPage } from './components/pages';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { DataErrorBoundary } from './components/common/DataErrorBoundary';
 
 function App() {
-  const [currentPage, setCurrentPage] = useState<'analytics' | 'hierarchy'>('analytics');
+  const [currentPage, setCurrentPage] = useState<PageType>('analytics');
 
   const renderPage = () => {
     switch (currentPage) {
       case 'analytics':
-        return <AnalyticsPage />;
+        return <ConsolidatedAnalyticsPage />;
+      case 'geographic':
+        return <GeographicAnalysisPage />;
+      case 'quality':
+        return <DataQualityPage />;
       case 'hierarchy':
         return <HierarchyPage />;
       default:
-        return <AnalyticsPage />;
+        return <ConsolidatedAnalyticsPage />;
     }
   };
 

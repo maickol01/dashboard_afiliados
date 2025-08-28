@@ -1,6 +1,6 @@
 import React from 'react';
-import { Target, Calendar, TrendingUp, Award, AlertCircle, Clock, BarChart3 } from 'lucide-react';
-import { Analytics } from '../../../types';
+import { Target, Calendar, TrendingUp, Award, AlertCircle, Clock, BarChart3} from 'lucide-react';
+import { Analytics} from '../../../types';
 
 interface GoalsAndObjectivesProps {
   analytics: Analytics;

@@ -1,26 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
-import { Analytics, Person } from '../../../types';
-import { NavojoaElectoralAnalytics } from '../../../types/navojoa-electoral';
-import { navojoaElectoralService } from '../../../services/navojoaElectoralService';
-import { useMobileDetection } from '../../../hooks/useMobileDetection';
+import { useData } from '../../hooks/useData';
+import { NavojoaElectoralAnalytics } from '../../types/navojoa-electoral';
+import { navojoaElectoralService } from '../../services/navojoaElectoralService';
+import { useMobileDetection } from '../../hooks/useMobileDetection';
 
 // Import the three main Navojoa components
-import KPICards from '../navojoa/KPICards';
-import SectionVerticalBarChart from '../navojoa/SectionVerticalBarChart';
-import SectionHeatMap from '../navojoa/SectionHeatMap';
+import KPICards from '../analytics/navojoa/KPICards';
+import SectionVerticalBarChart from '../analytics/navojoa/SectionVerticalBarChart';
+import SectionHeatMap from '../analytics/navojoa/SectionHeatMap';
 
-interface GeographicAnalysisProps {
-  analytics: Analytics;
-  hierarchicalData?: Person[];
-}
-
-const GeographicAnalysis: React.FC<GeographicAnalysisProps> = ({ 
-  analytics, 
-  hierarchicalData = [] 
-}) => {
-  const { isMobile} = useMobileDetection();
+const GeographicAnalysisPage: React.FC = () => {
+  const { isMobile } = useMobileDetection();
   
+  // Get data from useData hook
+  const {
+    data: hierarchicalData,
+    analytics,
+    loading: dataLoading,
+    error: dataError,
+    refetchData
+  } = useData();
+
   // State for Navojoa electoral data
   const [navojoaData, setNavojoaData] = useState<NavojoaElectoralAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,11 +31,16 @@ const GeographicAnalysis: React.FC<GeographicAnalysisProps> = ({
   // Load Navojoa electoral data on component mount and when hierarchical data changes
   useEffect(() => {
     const loadNavojoaData = async () => {
+      if (!hierarchicalData || !analytics) {
+        setLoading(dataLoading);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
 
-        console.log('🔍 GeographicAnalysis - Datos recibidos:', {
+        console.log('🔍 GeographicAnalysisPage - Datos recibidos:', {
           hierarchicalDataLength: hierarchicalData.length,
           analyticsExists: !!analytics,
           analyticsKeys: analytics ? Object.keys(analytics) : []
@@ -57,7 +63,7 @@ const GeographicAnalysis: React.FC<GeographicAnalysisProps> = ({
     };
 
     loadNavojoaData();
-  }, [hierarchicalData, analytics]);
+  }, [hierarchicalData, analytics, dataLoading]);
 
   // Handle section click from stacked bar chart
   const handleSectionClick = (sectionNumber: string) => {
@@ -73,13 +79,18 @@ const GeographicAnalysis: React.FC<GeographicAnalysisProps> = ({
       setLoading(true);
       setError(null);
 
-      const navojoaAnalytics = await navojoaElectoralService.generateNavojoaElectoralAnalytics(
-        hierarchicalData,
-        analytics
-      );
+      // Refresh base data first
+      await refetchData();
 
-      setNavojoaData(navojoaAnalytics);
-      setLastRefresh(new Date());
+      if (hierarchicalData && analytics) {
+        const navojoaAnalytics = await navojoaElectoralService.generateNavojoaElectoralAnalytics(
+          hierarchicalData,
+          analytics
+        );
+
+        setNavojoaData(navojoaAnalytics);
+        setLastRefresh(new Date());
+      }
     } catch (err) {
       console.error('Error refreshing Navojoa data:', err);
       setError(err instanceof Error ? err.message : 'Error al actualizar datos');
@@ -88,20 +99,55 @@ const GeographicAnalysis: React.FC<GeographicAnalysisProps> = ({
     }
   };
 
-  // Error state
+  // Handle data loading state
+  if (dataLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando datos de Supabase...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle data error state
+  if (dataError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">
+            <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Error al cargar datos</h3>
+          <p className="text-gray-600 mb-4">{dataError}</p>
+          <button
+            onClick={refetchData}
+            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-light"
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle geographic analysis error state
   if (error) {
     return (
       <div className={`bg-white rounded-lg shadow-md ${isMobile ? 'p-4' : 'p-6'}`}>
         <div className="text-center">
           <AlertTriangle className={`text-red-500 mx-auto mb-4 ${isMobile ? 'h-8 w-8' : 'h-12 w-12'}`} />
           <h3 className={`font-semibold text-gray-900 mb-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
-            Error al cargar datos
+            Error al cargar análisis geográfico
           </h3>
           <p className={`text-gray-600 mb-4 ${isMobile ? 'text-sm' : ''}`}>{error}</p>
           <button
             onClick={handleRefresh}
             disabled={loading}
-            className={`inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed ${isMobile ? 'text-sm' : ''}`}
+            className={`inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-light disabled:opacity-50 disabled:cursor-not-allowed ${isMobile ? 'text-sm' : ''}`}
           >
             <RefreshCw className={`mr-2 ${loading ? 'animate-spin' : ''} ${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
             Reintentar
@@ -194,4 +240,4 @@ const GeographicAnalysis: React.FC<GeographicAnalysisProps> = ({
   );
 };
 
-export default GeographicAnalysis;
+export default GeographicAnalysisPage;

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
-import { Person, Analytics, Period } from '../types';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Person, Analytics, Period, LeaderPerformanceData } from '../types';
 import { DataService } from '../services/dataService';
 import { DatabaseError, NetworkError, ValidationError, ServiceError } from '../types/errors';
+import { useRealTimeUpdates } from './useRealTimeUpdates';
 
 export const useData = () => {
   const [data, setData] = useState<Person[]>([]);
@@ -18,7 +19,9 @@ export const useData = () => {
     cacheHit: boolean;
   } | null>(null);
 
-  const handleError = (err: unknown): string => {
+
+
+  const handleError = useCallback((err: unknown): string => {
     console.error('Error al cargar datos:', err);
     
     if (err instanceof NetworkError) {
@@ -42,13 +45,16 @@ export const useData = () => {
     }
     
     return 'Error desconocido al cargar datos. Intenta recargar la página.';
-  };
+  }, []);
 
-  const fetchData = async (isRetry: boolean = false, forceRefresh: boolean = false) => {
+  const fetchData = useCallback(async (isRetry: boolean = false, forceRefresh: boolean = false, isRealTimeUpdate: boolean = false) => {
     const startTime = Date.now();
     
     try {
-      setLoading(true);
+      // For real-time updates, don't show full loading state
+      if (!isRealTimeUpdate) {
+        setLoading(true);
+      }
       if (!isRetry) {
         setError(null);
         setRetryCount(0);
@@ -84,7 +90,7 @@ export const useData = () => {
       setError(null);
       setRetryCount(0);
       
-      // Set performance metrics
+      // Set performance metrics - calculate total records
       const totalRecords = hierarchicalData.reduce((count, leader) => {
         let total = 1; // Count the leader
         if (leader.children) {
@@ -111,7 +117,8 @@ export const useData = () => {
       });
       
       const totalTime = Date.now() - startTime;
-      console.log(`Data fetch completed in ${totalTime}ms (Data: ${dataFetchTime}ms, Analytics: ${analyticsGenerationTime}ms, Records: ${totalRecords}, Cache Hit: ${cacheStatus.dataCache || cacheStatus.analyticsCache})`);
+      const updateType = isRealTimeUpdate ? 'Real-time update' : 'Manual fetch';
+      console.log(`${updateType} completed in ${totalTime}ms (Data: ${dataFetchTime}ms, Analytics: ${analyticsGenerationTime}ms, Records: ${totalRecords}, Cache Hit: ${cacheStatus.dataCache || cacheStatus.analyticsCache})`);
       
     } catch (err) {
       const errorMessage = handleError(err);
@@ -126,23 +133,45 @@ export const useData = () => {
         console.warn(`Auto-retrying data fetch (attempt ${newRetryCount}/3) in 2 seconds...`);
         
         setTimeout(() => {
-          fetchData(true, forceRefresh);
+          fetchData(true, forceRefresh, isRealTimeUpdate);
         }, 2000 * newRetryCount); // Exponential backoff
       }
     } finally {
-      setLoading(false);
+      if (!isRealTimeUpdate) {
+        setLoading(false);
+      }
     }
-  };
+  }, [handleError, retryCount]);
+
+  // Stable callback functions for real-time updates
+  const handleRealTimeDataUpdate = useCallback(() => {
+    console.log('Real-time update detected, refreshing data...');
+    fetchData(false, false, true); // isRetry=false, forceRefresh=false, isRealTimeUpdate=true
+  }, [fetchData]);
+
+  const handleRealTimeError = useCallback((error: Error) => {
+    console.warn('Real-time update error:', error.message);
+    // Don't set main error state for real-time errors, just log them
+  }, []);
+
+  // Real-time updates integration
+  const realTimeUpdates = useRealTimeUpdates({
+    onDataUpdate: handleRealTimeDataUpdate,
+    onError: handleRealTimeError,
+    enableAutoRefresh: true,
+    refreshDelay: 1000 // 1 second delay to debounce updates
+  });
 
   useEffect(() => {
     fetchData();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchData]);
 
-  const refetchData = () => {
+  const refetchData = useCallback(() => {
     fetchData();
-  };
+  }, [fetchData]);
 
-  const getRegistrationsByPeriod = (period: Period) => {
+  // Memoized registration data by period to prevent object recreation
+  const getRegistrationsByPeriod = useCallback((period: Period) => {
     if (!analytics) return [];
     
     switch (period) {
@@ -155,9 +184,66 @@ export const useData = () => {
       default:
         return analytics.dailyRegistrations;
     }
-  };
+  }, [analytics]);
 
-  const searchData = (query: string): Person[] => {
+  // Memoized registration data results to prevent unnecessary re-renders
+  const memoizedRegistrationsByDay = useMemo(() => {
+    return analytics?.dailyRegistrations || [];
+  }, [analytics?.dailyRegistrations]);
+
+  const memoizedRegistrationsByWeek = useMemo(() => {
+    return analytics?.weeklyRegistrations || [];
+  }, [analytics?.weeklyRegistrations]);
+
+  const memoizedRegistrationsByMonth = useMemo(() => {
+    return analytics?.monthlyRegistrations || [];
+  }, [analytics?.monthlyRegistrations]);
+
+  // Optimized getRegistrationsByPeriod with memoized results
+  const getRegistrationsByPeriodMemoized = useCallback((period: Period) => {
+    switch (period) {
+      case 'day':
+        return memoizedRegistrationsByDay;
+      case 'week':
+        return memoizedRegistrationsByWeek;
+      case 'month':
+        return memoizedRegistrationsByMonth;
+      default:
+        return memoizedRegistrationsByDay;
+    }
+  }, [memoizedRegistrationsByDay, memoizedRegistrationsByWeek, memoizedRegistrationsByMonth]);
+
+  // Memoized leader performance data by period to prevent recalculation
+  const memoizedLeaderPerformanceByDay = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    return DataService.generatePeriodAwareLeaderPerformance(data, 'day');
+  }, [data]);
+
+  const memoizedLeaderPerformanceByWeek = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    return DataService.generatePeriodAwareLeaderPerformance(data, 'week');
+  }, [data]);
+
+  const memoizedLeaderPerformanceByMonth = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    return DataService.generatePeriodAwareLeaderPerformance(data, 'month');
+  }, [data]);
+
+  // Stabilized getLeaderPerformanceByPeriod function with useCallback and memoized results
+  const getLeaderPerformanceByPeriodStable = useCallback((period: Period) => {
+    switch (period) {
+      case 'day':
+        return memoizedLeaderPerformanceByDay;
+      case 'week':
+        return memoizedLeaderPerformanceByWeek;
+      case 'month':
+        return memoizedLeaderPerformanceByMonth;
+      default:
+        return memoizedLeaderPerformanceByDay;
+    }
+  }, [memoizedLeaderPerformanceByDay, memoizedLeaderPerformanceByWeek, memoizedLeaderPerformanceByMonth]);
+
+  const searchData = useCallback((query: string): Person[] => {
     if (!query.trim()) return data;
     
     const searchInHierarchy = (people: Person[]): Person[] => {
@@ -186,9 +272,9 @@ export const useData = () => {
     };
     
     return searchInHierarchy(data);
-  };
+  }, [data]);
 
-  const filterByRole = (role: string): Person[] => {
+  const filterByRole = useCallback((role: string): Person[] => {
     if (role === 'all') return data;
     
     const filterInHierarchy = (people: Person[]): Person[] => {
@@ -208,9 +294,9 @@ export const useData = () => {
     };
     
     return filterInHierarchy(data);
-  };
+  }, [data]);
 
-  const filterByDate = (startDate: Date, endDate: Date): Person[] => {
+  const filterByDate = useCallback((startDate: Date, endDate: Date): Person[] => {
     const filterInHierarchy = (people: Person[]): Person[] => {
       const results: Person[] = [];
       
@@ -229,13 +315,128 @@ export const useData = () => {
     };
     
     return filterInHierarchy(data);
-  };
+  }, [data]);
+
+  // Data validation functions for chart components
+  const validateRegistrationData = useCallback((data: { date: string; count: number }[]): { date: string; count: number }[] => {
+    if (!Array.isArray(data)) {
+      console.warn('Invalid registration data: expected array, got:', typeof data);
+      return [];
+    }
+    
+    return data.filter(item => {
+      if (!item || typeof item !== 'object') {
+        console.warn('Invalid registration item: expected object, got:', typeof item);
+        return false;
+      }
+      
+      if (typeof item.date !== 'string' || !item.date.trim()) {
+        console.warn('Invalid registration date: expected non-empty string, got:', typeof item.date);
+        return false;
+      }
+      
+      if (typeof item.count !== 'number' || isNaN(item.count) || item.count < 0) {
+        console.warn('Invalid registration count: expected non-negative number, got:', item.count);
+        return false;
+      }
+      
+      return true;
+    });
+  }, []);
+
+  const validateLeaderPerformanceData = useCallback((data: unknown[]): LeaderPerformanceData[] => {
+    if (!Array.isArray(data)) {
+      console.warn('Invalid leader performance data: expected array, got:', typeof data);
+      return [];
+    }
+    
+    return data.filter(item => {
+      if (!item || typeof item !== 'object') {
+        console.warn('Invalid leader performance item: expected object, got:', typeof item);
+        return false;
+      }
+      
+      const typedItem = item as any;
+      
+      if (typeof typedItem.name !== 'string' || !typedItem.name.trim()) {
+        console.warn('Invalid leader name: expected non-empty string, got:', typeof typedItem.name);
+        return false;
+      }
+      
+      if (typeof typedItem.citizenCount !== 'number' || isNaN(typedItem.citizenCount) || typedItem.citizenCount < 0) {
+        console.warn('Invalid citizen count: expected non-negative number, got:', typedItem.citizenCount);
+        return false;
+      }
+      
+      return true;
+    }) as LeaderPerformanceData[];
+  }, []);
+
+  // Validated and memoized chart data transformations
+  const getValidatedRegistrationsByPeriod = useCallback((period: Period) => {
+    const rawData = getRegistrationsByPeriodMemoized(period);
+    return validateRegistrationData(rawData);
+  }, [getRegistrationsByPeriodMemoized, validateRegistrationData]);
+
+  const getValidatedLeaderPerformanceByPeriod = useCallback((period: Period) => {
+    const rawData = getLeaderPerformanceByPeriodStable(period);
+    return validateLeaderPerformanceData(rawData);
+  }, [getLeaderPerformanceByPeriodStable, validateLeaderPerformanceData]);
 
   // Add method to force refresh with cache clearing
-  const forceRefresh = () => {
+  const forceRefresh = useCallback(() => {
     DataService.clearCache();
     fetchData(false, true);
-  };
+  }, [fetchData]);
+
+
+
+  // Memoized expensive computations
+  const totalRecordsCount = useMemo(() => {
+    return data.reduce((count, leader) => {
+      let total = 1; // Count the leader
+      if (leader.children) {
+        leader.children.forEach(brigadista => {
+          total += 1; // Count the brigadista
+          if (brigadista.children) {
+            brigadista.children.forEach(movilizador => {
+              total += 1; // Count the movilizador
+              if (movilizador.children) {
+                total += movilizador.children.length; // Count ciudadanos
+              }
+            });
+          }
+        });
+      }
+      return count + total;
+    }, 0);
+  }, [data]);
+
+  // Memoized data summary for performance
+  const dataSummary = useMemo(() => {
+    const leaders = data.length;
+    let brigadistas = 0;
+    let movilizadores = 0;
+    let ciudadanos = 0;
+
+    data.forEach(leader => {
+      if (leader.children) {
+        brigadistas += leader.children.length;
+        leader.children.forEach(brigadista => {
+          if (brigadista.children) {
+            movilizadores += brigadista.children.length;
+            brigadista.children.forEach(movilizador => {
+              if (movilizador.children) {
+                ciudadanos += movilizador.children.length;
+              }
+            });
+          }
+        });
+      }
+    });
+
+    return { leaders, brigadistas, movilizadores, ciudadanos, total: totalRecordsCount };
+  }, [data, totalRecordsCount]);
 
   return {
     data,
@@ -248,9 +449,28 @@ export const useData = () => {
     performanceMetrics,
     refetchData,
     forceRefresh,
-    getRegistrationsByPeriod,
+    // Stabilized and validated chart data functions
+    getRegistrationsByPeriod: getValidatedRegistrationsByPeriod,
+    getLeaderPerformanceByPeriod: getValidatedLeaderPerformanceByPeriod,
+    // Legacy functions for backward compatibility
+    getRegistrationsByPeriodRaw: getRegistrationsByPeriodMemoized,
+    getLeaderPerformanceByPeriodRaw: getLeaderPerformanceByPeriodStable,
     searchData,
     filterByRole,
     filterByDate,
+    // Memoized computations
+    totalRecordsCount,
+    dataSummary,
+    // Data validation utilities
+    validateRegistrationData,
+    validateLeaderPerformanceData,
+    // Real-time update status and controls
+    realTimeStatus: realTimeUpdates.status,
+    recentUpdates: realTimeUpdates.recentUpdates,
+    triggerRealTimeRefresh: realTimeUpdates.triggerRefresh,
+    checkRealTimeConnection: realTimeUpdates.checkConnection,
+    detectManualUpdates: realTimeUpdates.detectUpdates,
+    clearRealTimeError: realTimeUpdates.clearError,
+    clearRecentUpdates: realTimeUpdates.clearRecentUpdates,
   };
 };

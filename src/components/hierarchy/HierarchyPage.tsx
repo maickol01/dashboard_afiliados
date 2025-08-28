@@ -1,12 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useData } from '../../hooks/useData';
 import HierarchyTable from '../tables/HierarchyTable';
 import { exportToPDF } from '../../utils/export';
+import DateFilter, { DateRange } from '../shared/DateFilter';
 
 const HierarchyPage: React.FC = () => {
-  const { data, loading, error, refetchData } = useData();
+  // Date range state management
+  const [dateRange, setDateRange] = useState<DateRange | null>(null);
+  
+  // Pass date range state to useData hook
+  const { data, loading, error, refetchData } = useData(dateRange);
 
 
+
+  // Handle filter change callback function
+  const handleFilterChange = (newDateRange: DateRange | null) => {
+    setDateRange(newDateRange);
+  };
 
   const handleExportPDF = (selectedItems: string[]) => {
     exportToPDF(data, selectedItems);
