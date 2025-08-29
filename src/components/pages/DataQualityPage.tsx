@@ -8,7 +8,7 @@ const DataQualityPage: React.FC = () => {
     loading,
     error,
     refetchData
-  } = useData();
+  } = useData(null);
 
   // Handle loading state
   if (loading) {

@@ -20,7 +20,7 @@ const GeographicAnalysisPage: React.FC = () => {
     loading: dataLoading,
     error: dataError,
     refetchData
-  } = useData();
+  } = useData(null);
 
   // State for Navojoa electoral data
   const [navojoaData, setNavojoaData] = useState<NavojoaElectoralAnalytics | null>(null);

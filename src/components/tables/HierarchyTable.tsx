@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronRight, Search, Filter, Download, FileText } from 'lucide-react';
 import { Person } from '../../types';
 import { exportInteractiveExcel } from '../../utils/export';
@@ -8,11 +8,44 @@ interface HierarchyTableProps {
   onExportPDF: (selectedItems: string[]) => void;
 }
 
+const INITIAL_LOAD_COUNT = 50;
+const LOAD_MORE_COUNT = 20;
+
 const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) => {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [displayLimit, setDisplayLimit] = useState(INITIAL_LOAD_COUNT);
+
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Reset displayLimit when filters or search terms change
+  useEffect(() => {
+    setDisplayLimit(INITIAL_LOAD_COUNT);
+  }, [searchTerm, roleFilter, data]); // Also reset if the base data changes
+
+  // Intersection Observer for infinite scrolling
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setDisplayLimit((prevLimit) => prevLimit + LOAD_MORE_COUNT);
+        }
+      },
+      { threshold: 1.0 } // Trigger when 100% of the sentinel is visible
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => {
+      if (loadMoreRef.current) {
+        observer.unobserve(loadMoreRef.current);
+      }
+    };
+  }, [loadMoreRef, displayLimit]); // Re-run if ref or displayLimit changes
 
   const handleExportExcel = () => {
     exportInteractiveExcel(data, Array.from(selectedItems));
@@ -40,7 +73,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
 
   const getAllPeopleFlat = (people: Person[]): Person[] => {
     const result: Person[] = [];
-    
+
     const flatten = (persons: Person[]) => {
       persons.forEach(person => {
         result.push(person);
@@ -49,7 +82,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
         }
       });
     };
-    
+
     flatten(people);
     return result;
   };
@@ -59,11 +92,11 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
       // Vista jerárquica completa
       return data.filter(person => {
         const matchesSearch = person.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            person.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            (person.direccion && person.direccion.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                            (person.colonia && person.colonia.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                            (person.seccion && person.seccion.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                            (person.numero_cel && person.numero_cel.toLowerCase().includes(searchTerm.toLowerCase()));
+          person.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (person.direccion && person.direccion.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (person.colonia && person.colonia.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (person.seccion && person.seccion.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (person.numero_cel && person.numero_cel.toLowerCase().includes(searchTerm.toLowerCase()));
         return matchesSearch;
       });
     } else {
@@ -71,11 +104,11 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
       const allPeople = getAllPeopleFlat(data);
       const filteredPeople = allPeople.filter(person => {
         const matchesSearch = person.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            person.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            (person.direccion && person.direccion.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                            (person.colonia && person.colonia.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                            (person.seccion && person.seccion.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                            (person.numero_cel && person.numero_cel.toLowerCase().includes(searchTerm.toLowerCase()));
+          person.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (person.direccion && person.direccion.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (person.colonia && person.colonia.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (person.seccion && person.seccion.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (person.numero_cel && person.numero_cel.toLowerCase().includes(searchTerm.toLowerCase()));
         const matchesRole = person.role === roleFilter;
         return matchesSearch && matchesRole;
       });
@@ -140,7 +173,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
     }
 
     const allSelected = allCurrentRoleIds.every(id => selectedItems.has(id));
-    
+
     const newSelected = new Set(selectedItems);
     if (allSelected) {
       allCurrentRoleIds.forEach(id => newSelected.delete(id));
@@ -166,13 +199,13 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
 
   const getRoleName = (role: string) => {
     switch (role) {
-      case 'lider': 
+      case 'lider':
       case 'leader': return 'Líder';
-      case 'brigadista': 
+      case 'brigadista':
       case 'brigadier': return 'Brigadista';
-      case 'movilizador': 
+      case 'movilizador':
       case 'mobilizer': return 'Movilizador';
-      case 'ciudadano': 
+      case 'ciudadano':
       case 'citizen': return 'Ciudadano';
       default: return role;
     }
@@ -189,7 +222,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
     }
 
     const allSelected = allCurrentRoleIds.length > 0 && allCurrentRoleIds.every(id => selectedItems.has(id));
-    
+
     switch (roleFilter) {
       case 'all':
         return allSelected ? 'Deseleccionar Todos los Líderes' : 'Seleccionar Todos los Líderes';
@@ -207,7 +240,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
   };
 
   const renderHierarchyLevel = (people: Person[], level: number = 0) => {
-    return people.map((person) => (
+    return people.slice(0, displayLimit).map((person) => (
       <React.Fragment key={person.id}>
         <tr className="hover:bg-gray-50">
           <td className="px-6 py-4 whitespace-nowrap">
@@ -251,7 +284,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
             {person.numero_cel || '-'}
           </td>
         </tr>
-        {expandedItems.has(person.id) && person.children && 
+        {expandedItems.has(person.id) && person.children &&
           renderHierarchyLevel(person.children, level + 1)
         }
       </React.Fragment>
@@ -259,7 +292,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
   };
 
   const renderFlatData = (people: Person[]) => {
-    return people.map((person) => (
+    return people.slice(0, displayLimit).map((person) => (
       <tr key={person.id} className="hover:bg-gray-50">
         <td className="px-6 py-4 whitespace-nowrap">
           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(person.role)}`}>
@@ -315,7 +348,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
               />
             </div>
-            
+
             {/* Filtro por rol */}
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -332,7 +365,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
               </select>
             </div>
           </div>
-          
+
           <div className="flex flex-wrap gap-2">
             {/* Seleccionar todos */}
             <button
@@ -341,7 +374,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
             >
               {getSelectAllButtonText()}
             </button>
-            
+
             {/* Exportar Excel */}
             <button
               onClick={handleExportExcel}
@@ -391,12 +424,22 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {showHierarchicalView 
+            {showHierarchicalView
               ? renderHierarchyLevel(filteredData)
               : renderFlatData(filteredData)
             }
           </tbody>
         </table>
+
+        {/* Sentinel element for infinite scroll */}
+        {filteredData.length > displayLimit && (
+          <div
+            ref={loadMoreRef}
+            className="h-10 flex items-center justify-center text-gray-500"
+          >
+            Cargando más elementos...
+          </div>
+        )}
       </div>
     </div>
   );

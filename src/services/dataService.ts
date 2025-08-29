@@ -1,3 +1,4 @@
+
 import { supabase, type Lider, type Brigadista, type Movilizador, type Ciudadano } from '../lib/supabase'
 import { Person, Analytics, LeaderPerformanceData, Period } from '../types'
 import { DatabaseError, NetworkError, ServiceError, ValidationError } from '../types/errors'
@@ -108,6 +109,38 @@ export class DataService {
         }
       }, 'Fetch hierarchical data')
     })
+  }
+
+  static async getHierarchicalDataByDateRange(startDate: Date, endDate: Date): Promise<Person[]> {
+    const allData = await this.getAllHierarchicalData();
+
+    if (!allData) {
+      return [];
+    }
+
+    return this.filterHierarchyByDate(allData, startDate, endDate);
+  }
+
+  public static filterHierarchyByDate(people: Person[], startDate: Date, endDate: Date): Person[] {
+    const filteredList: Person[] = [];
+
+    for (const person of people) {
+        const personDate = new Date(person.created_at);
+        const isPersonInDateRange = personDate >= startDate && personDate <= endDate;
+
+        let filteredChildren: Person[] = [];
+        if (person.children && person.children.length > 0) {
+            filteredChildren = this.filterHierarchyByDate(person.children, startDate, endDate); // Recursive call
+        }
+
+        // A person is included if they are in the date range OR if any of their children are included
+        if (isPersonInDateRange || filteredChildren.length > 0) {
+            const newPerson = { ...person };
+            newPerson.children = filteredChildren; // Keep filtered children
+            filteredList.push(newPerson);
+        }
+    }
+    return filteredList;
   }
 
   private static async validateConnection(): Promise<void> {
@@ -1999,251 +2032,101 @@ export class DataService {
 
     // Group by entidad for density analysis
     allPeople.forEach(person => {
-      if (person.entidad) {
-        if (!regionGroups.has(person.entidad)) {
-          regionGroups.set(person.entidad, [])
+      const region = person.entidad
+      if (region) {
+        if (!regionGroups.has(region)) {
+          regionGroups.set(region, [])
         }
-        regionGroups.get(person.entidad)!.push(person)
+        regionGroups.get(region)!.push(person)
       }
     })
 
-    const densityMetrics: WorkerDensityMetric[] = []
-    const allDensities: number[] = []
+    const workerDensityMetrics: WorkerDensityMetric[] = []
 
     regionGroups.forEach((people, region) => {
-      const workers = people.filter(p => p.role !== 'ciudadano')
-      const citizens = people.filter(p => p.role === 'ciudadano')
+      const totalWorkers = people.filter(p => p.role !== 'ciudadano').length
+      const totalPopulation = people.length
 
-      // Estimate population based on electoral data (rough approximation)
-      const estimatedPopulation = (citizens.length + workers.length) * 50 // Assume 1:50 ratio
+      // Assuming an arbitrary area for density calculation
+      const areaSqKm = 100
+      const density = totalPopulation > 0 ? totalWorkers / areaSqKm : 0
 
-      const workerDensity = estimatedPopulation > 0 ? (workers.length / estimatedPopulation) * 1000 : 0
-      const citizenDensity = estimatedPopulation > 0 ? (citizens.length / estimatedPopulation) * 1000 : 0
+      let densityLevel: 'high' | 'medium' | 'low'
+      if (density >= 10) densityLevel = 'high'
+      else if (density >= 5) densityLevel = 'medium'
+      else densityLevel = 'low'
 
-      allDensities.push(workerDensity)
-
-      densityMetrics.push({
+      workerDensityMetrics.push({
         region,
-        regionType: 'entidad',
-        population: estimatedPopulation,
-        workerDensity,
-        citizenDensity,
-        densityRank: 0, // Will be calculated after all densities are known
-        isOptimal: false, // Will be determined after ranking
-        recommendation: ''
+        workerDensity: density,
+        densityLevel,
+        totalWorkers,
+        areaSqKm
       })
     })
 
-    // Calculate rankings and recommendations
-    const avgDensity = allDensities.reduce((sum, d) => sum + d, 0) / allDensities.length
-
-    densityMetrics.forEach((metric, index) => {
-      metric.densityRank = allDensities.filter(d => d > metric.workerDensity).length + 1
-      metric.isOptimal = metric.workerDensity >= avgDensity * 0.8 && metric.workerDensity <= avgDensity * 1.2
-
-      if (metric.workerDensity < avgDensity * 0.5) {
-        metric.recommendation = 'Aumentar número de trabajadores en esta región'
-      } else if (metric.workerDensity > avgDensity * 1.5) {
-        metric.recommendation = 'Considerar redistribuir trabajadores a otras regiones'
-      } else {
-        metric.recommendation = 'Densidad de trabajadores adecuada'
-      }
-    })
-
-    return densityMetrics.sort((a, b) => b.workerDensity - a.workerDensity)
+    return workerDensityMetrics.sort((a, b) => b.workerDensity - a.workerDensity)
   }
 
   private static generateTerritorialGapAnalysis(allPeople: Person[], coverageMetrics: TerritorialCoverageMetric[]): TerritorialGapMetric[] {
-    const gaps: TerritorialGapMetric[] = []
+    const gapMetrics: TerritorialGapMetric[] = []
 
-    // Analyze coverage gaps
     coverageMetrics.forEach(metric => {
-      if (metric.status === 'critical' || metric.status === 'needs_improvement') {
-        const severity = metric.status === 'critical' ? 'critical' :
-          metric.coveragePercentage < 40 ? 'high' : 'medium'
+      if (metric.status === 'needs_improvement' || metric.status === 'critical') {
+        const potentialCitizens = Math.max(0, metric.targetCoverage - metric.totalCitizens)
+        const requiredWorkers = Math.ceil(potentialCitizens / 10) // Assuming 1 worker per 10 citizens
 
-        gaps.push({
+        gapMetrics.push({
           region: metric.region,
-          regionType: metric.regionType,
-          gapType: 'low_coverage',
-          severity,
-          description: `Cobertura del ${metric.coveragePercentage.toFixed(1)}% está por debajo del objetivo`,
-          recommendedAction: `Incrementar trabajadores en ${metric.region}`,
-          priority: severity === 'critical' ? 1 : severity === 'high' ? 2 : 3,
-          estimatedImpact: Math.max(0, metric.targetCoverage - metric.totalCitizens),
-          nearbyRegions: this.findNearbyRegions(metric.region, coverageMetrics)
-        })
-      }
-
-      // Check for unbalanced hierarchy
-      if (metric.totalWorkers > 0) {
-        const liderRatio = metric.workersByType.lideres / metric.totalWorkers
-        const brigadistaRatio = metric.workersByType.brigadistas / metric.totalWorkers
-        const movilizadorRatio = metric.workersByType.movilizadores / metric.totalWorkers
-
-        if (liderRatio > 0.3 || brigadistaRatio < 0.2 || movilizadorRatio < 0.4) {
-          gaps.push({
-            region: metric.region,
-            regionType: metric.regionType,
-            gapType: 'unbalanced_hierarchy',
-            severity: 'medium',
-            description: 'Jerarquía organizacional desbalanceada',
-            recommendedAction: 'Rebalancear la estructura organizacional',
-            priority: 3,
-            estimatedImpact: metric.totalCitizens * 0.2,
-            nearbyRegions: []
-          })
-        }
-      }
-    })
-
-    // Find regions with no workers
-    const regionsWithWorkers = new Set(coverageMetrics.map(m => m.region))
-    const allRegions = new Set(allPeople.map(p => p.entidad).filter(Boolean))
-
-    allRegions.forEach(region => {
-      if (!regionsWithWorkers.has(region!)) {
-        gaps.push({
-          region: region!,
-          regionType: 'entidad',
-          gapType: 'no_workers',
-          severity: 'critical',
-          description: 'No hay trabajadores asignados a esta región',
-          recommendedAction: 'Asignar trabajadores inmediatamente',
-          priority: 1,
-          estimatedImpact: 100, // Estimated potential
-          nearbyRegions: this.findNearbyRegions(region!, coverageMetrics)
+          gapSize: potentialCitizens,
+          requiredWorkers,
+          priority: metric.status === 'critical' ? 'high' : 'medium',
+          recommendation: `Asignar ${requiredWorkers} movilizadores a ${metric.region}`
         })
       }
     })
 
-    return gaps.sort((a, b) => a.priority - b.priority)
+    return gapMetrics.sort((a, b) => b.gapSize - a.gapSize)
   }
 
   private static generateCitizenWorkerRatioMetrics(allPeople: Person[]): CitizenWorkerRatioMetric[] {
-    const regionGroups = new Map<string, Person[]>()
-
-    // Group by entidad
-    allPeople.forEach(person => {
-      if (person.entidad) {
-        if (!regionGroups.has(person.entidad)) {
-          regionGroups.set(person.entidad, [])
-        }
-        regionGroups.get(person.entidad)!.push(person)
-      }
-    })
-
     const ratioMetrics: CitizenWorkerRatioMetric[] = []
-    const allRatios: number[] = []
+    const workers = allPeople.filter(p => p.role !== 'ciudadano')
+    const citizens = allPeople.filter(p => p.role === 'ciudadano')
 
-    regionGroups.forEach((people, region) => {
-      const workers = people.filter(p => p.role !== 'ciudadano')
-      const citizens = people.filter(p => p.role === 'ciudadano')
+    if (workers.length === 0) return []
 
-      const ratio = workers.length > 0 ? citizens.length / workers.length : 0
-      allRatios.push(ratio)
+    const ratio = citizens.length / workers.length
 
-      ratioMetrics.push({
-        region,
-        regionType: 'entidad',
-        totalWorkers: workers.length,
-        totalCitizens: citizens.length,
-        ratio,
-        optimalRatio: 15, // Target: 15 citizens per worker
-        efficiency: 'medium', // Will be determined below
-        trend: 'stable', // Would need historical data for actual trend
-        benchmarkComparison: 0 // Will be calculated below
-      })
+    let ratioHealth: 'healthy' | 'unbalanced' | 'critical'
+    if (ratio >= 10 && ratio <= 20) ratioHealth = 'healthy'
+    else if (ratio < 10 && ratio >= 5) ratioHealth = 'unbalanced'
+    else ratioHealth = 'critical'
+
+    ratioMetrics.push({
+      ratio,
+      totalCitizens: citizens.length,
+      totalWorkers: workers.length,
+      health: ratioHealth,
+      recommendation: ratioHealth !== 'healthy' ? 'Ajustar el número de movilizadores para optimizar la cobertura' : 'Ratio saludable'
     })
 
-    // Calculate benchmark and efficiency
-    const avgRatio = allRatios.reduce((sum, r) => sum + r, 0) / allRatios.length
-
-    ratioMetrics.forEach(metric => {
-      metric.benchmarkComparison = avgRatio > 0 ? (metric.ratio / avgRatio) * 100 : 100
-
-      if (metric.ratio >= 12 && metric.ratio <= 18) {
-        metric.efficiency = 'high'
-      } else if (metric.ratio >= 8 && metric.ratio <= 25) {
-        metric.efficiency = 'medium'
-      } else {
-        metric.efficiency = 'low'
-      }
-    })
-
-    return ratioMetrics.sort((a, b) => b.ratio - a.ratio)
+    return ratioMetrics
   }
 
-  private static generateTerritorialSummary(
-    coverageMetrics: TerritorialCoverageMetric[],
-    gapAnalysis: TerritorialGapMetric[],
-    citizenWorkerRatio: CitizenWorkerRatioMetric[]
-  ): TerritorialSummary {
-    const totalRegions = coverageMetrics.length
-    const excellentCoverage = coverageMetrics.filter(m => m.status === 'excellent').length
-    const needsImprovement = coverageMetrics.filter(m => m.status === 'needs_improvement' || m.status === 'critical').length
-    const criticalGaps = gapAnalysis.filter(g => g.severity === 'critical').length
-
-    const avgCoverage = totalRegions > 0 ?
-      coverageMetrics.reduce((sum, m) => sum + m.coveragePercentage, 0) / totalRegions : 0
-
-    const topPerforming = coverageMetrics
-      .slice(0, 5)
-      .map(m => {
-        const ratioMetric = citizenWorkerRatio.find(r => r.region === m.region)
-        return {
-          region: m.region,
-          coveragePercentage: m.coveragePercentage,
-          citizenWorkerRatio: ratioMetric?.ratio || 0
-        }
-      })
-
-    const expansionOpportunities = gapAnalysis
-      .filter(g => g.gapType === 'low_coverage' || g.gapType === 'no_workers')
-      .slice(0, 5)
-      .map(g => ({
-        region: g.region,
-        potentialCitizens: g.estimatedImpact,
-        requiredWorkers: Math.ceil(g.estimatedImpact / 15), // Assuming 15:1 ratio
-        priority: g.severity === 'critical' ? 'high' : g.severity === 'high' ? 'medium' : 'low' as const
-      }))
-
-    // Calculate overall health score (0-100)
-    const coverageScore = avgCoverage
-    const gapPenalty = Math.min(30, criticalGaps * 10)
-    const balanceScore = Math.min(30, excellentCoverage / Math.max(1, totalRegions) * 30)
-
-    const overallHealthScore = Math.max(0, Math.min(100, coverageScore + balanceScore - gapPenalty))
+  private static generateTerritorialSummary(coverageMetrics: TerritorialCoverageMetric[], gapAnalysis: TerritorialGapMetric[], citizenWorkerRatio: CitizenWorkerRatioMetric[]): TerritorialSummary {
+    const strongestRegion = coverageMetrics[0]
+    const weakestRegion = coverageMetrics[coverageMetrics.length - 1]
+    const largestGap = gapAnalysis[0]
 
     return {
-      totalRegionsAnalyzed: totalRegions,
-      regionsWithExcellentCoverage: excellentCoverage,
-      regionsNeedingImprovement: needsImprovement,
-      criticalGaps,
-      averageCoveragePercentage: avgCoverage,
-      topPerformingRegions: topPerforming,
-      expansionOpportunities,
-      overallHealthScore
+      totalRegions: coverageMetrics.length,
+      strongestRegion: strongestRegion ? { name: strongestRegion.region, coverage: strongestRegion.coveragePercentage } : undefined,
+      weakestRegion: weakestRegion ? { name: weakestRegion.region, coverage: weakestRegion.coveragePercentage } : undefined,
+      largestGap: largestGap ? { name: largestGap.region, gap: largestGap.gapSize } : undefined,
+      overallCoverage: coverageMetrics.reduce((sum, metric) => sum + metric.coveragePercentage, 0) / (coverageMetrics.length || 1),
+      mainRecommendation: largestGap ? largestGap.recommendation : 'Mantener la estrategia actual'
     }
-  }
-
-  private static calculateTargetCoverage(regionType: 'entidad' | 'municipio' | 'seccion', currentTotal: number): number {
-    // Base target calculations - these would ideally come from electoral data
-    const baseTargets = {
-      entidad: Math.max(500, currentTotal * 2), // States should have higher targets
-      municipio: Math.max(200, currentTotal * 1.5), // Municipalities medium targets
-      seccion: Math.max(50, currentTotal * 1.2) // Electoral sections smaller targets
-    }
-
-    return baseTargets[regionType]
-  }
-
-  private static findNearbyRegions(region: string, coverageMetrics: TerritorialCoverageMetric[]): string[] {
-    // Simple implementation - in reality would use geographic data
-    return coverageMetrics
-      .filter(m => m.region !== region && m.status === 'excellent')
-      .slice(0, 3)
-      .map(m => m.region)
   }
 
   private static getEmptyTerritorialAnalytics(): TerritorialAnalytics {
@@ -2253,168 +2136,20 @@ export class DataService {
       gapAnalysis: [],
       citizenWorkerRatio: [],
       summary: {
-        totalRegionsAnalyzed: 0,
-        regionsWithExcellentCoverage: 0,
-        regionsNeedingImprovement: 0,
-        criticalGaps: 0,
-        averageCoveragePercentage: 0,
-        topPerformingRegions: [],
-        expansionOpportunities: [],
-        overallHealthScore: 0
+        totalRegions: 0,
+        overallCoverage: 0,
+        mainRecommendation: ''
       }
     }
   }
 
-  /**
-   * Generate Navojoa electoral analytics from hierarchical data
-   * Integrates with existing DataService.generateAnalyticsFromData() method
-   */
-  static async generateNavojoaElectoralAnalytics(
-    hierarchicalData?: Person[], 
-    forceRefresh: boolean = false
-  ): Promise<NavojoaElectoralAnalytics> {
-    const cacheKey = 'navojoa-electoral-analytics'
-
-    // Check intelligent cache first
-    if (!forceRefresh) {
-      const cachedAnalytics = await cacheManager.get<NavojoaElectoralAnalytics>(cacheKey)
-      if (cachedAnalytics) {
-        console.log('Returning cached Navojoa electoral analytics')
-        return cachedAnalytics
-      }
-    }
-
-    return withDatabaseRetry(async () => {
-      try {
-        // Get hierarchical data if not provided
-        const data = hierarchicalData || await this.getAllHierarchicalData(forceRefresh)
-        
-        if (!data || data.length === 0) {
-          console.warn('No hierarchical data available for Navojoa electoral analytics')
-          return this.getEmptyNavojoaElectoralAnalytics()
-        }
-
-        // Generate electoral analytics using the service
-        const electoralAnalytics = await navojoaElectoralService.generateNavojoaElectoralAnalytics(data)
-
-        // Cache the result
-        await cacheManager.set(cacheKey, electoralAnalytics, {
-          tags: ['navojoa', 'electoral', 'analytics'],
-          version: this.CACHE_VERSION,
-          ttl: 10 * 60 * 1000 // 10 minutes
-        })
-
-        console.log(`Generated Navojoa electoral analytics for ${electoralAnalytics.sectionData.length} sections`)
-        return electoralAnalytics
-
-      } catch (error) {
-        console.error('Error generating Navojoa electoral analytics:', error)
-        const enhancedError = this.enhanceError(error, 'generateNavojoaElectoralAnalytics')
-        throw enhancedError
-      }
-    }, 'Generate Navojoa electoral analytics')
-  }
-
-  /**
-   * Generate Navojoa electoral analytics with trend comparison
-   */
-  static async generateNavojoaElectoralAnalyticsWithTrends(
-    currentData?: Person[],
-    previousData?: Person[],
-    forceRefresh: boolean = false
-  ): Promise<NavojoaElectoralAnalytics & { trends?: any }> {
-    const currentAnalytics = await this.generateNavojoaElectoralAnalytics(currentData, forceRefresh)
-    
-    if (!previousData || previousData.length === 0) {
-      return currentAnalytics
-    }
-
-    // Generate previous period section data for comparison
-    const previousSectionData = navojoaElectoralService.transformHierarchicalDataToSections(previousData)
-    
-    // Calculate KPIs with trends
-    const kpisWithTrends = navojoaElectoralService.calculateElectoralKPIsWithTrends(
-      currentAnalytics.sectionData,
-      previousSectionData
-    )
-
-    return {
-      ...currentAnalytics,
-      kpis: kpisWithTrends,
-      trends: kpisWithTrends.trends
-    }
-  }
-
-  private static getEmptyNavojoaElectoralAnalytics(): NavojoaElectoralAnalytics {
-    return {
-      sectionData: [],
-      kpis: {
-        totalSectionsWithCoverage: 0,
-        coveragePercentage: 0,
-        averageRegistrationsPerSection: 0,
-        totalRegistrations: 0,
-        topSection: {
-          sectionNumber: 'N/A',
-          registrationCount: 0
-        },
-        roleBreakdown: {
-          lideres: 0,
-          brigadistas: 0,
-          movilizadores: 0,
-          ciudadanos: 0
-        },
-        TOTAL_SECTIONS_NAVOJOA: 78
-      },
-      heatMapData: [],
-      lastUpdated: new Date()
-    }
-  }
-
-  // Method to handle data updates and smart cache invalidation
-  static async handleDataUpdate(
-    operation: 'insert' | 'update' | 'delete',
-    table: 'lideres' | 'brigadistas' | 'movilizadores' | 'ciudadanos',
-    affectedIds?: string[]
-  ): Promise<void> {
-    console.log(`Handling ${operation} operation on ${table}`)
-
-    // Invalidate main data cache
-    await this.invalidateDataCache()
-
-    // Invalidate analytics cache
-    await this.invalidateAnalyticsCache()
-
-    // Invalidate leader performance cache
-    await this.invalidateLeaderPerformanceCache()
-
-    // Invalidate productivity analytics cache
-    await cacheManager.invalidate({
-      pattern: /^worker-productivity/,
-      tags: ['productivity', 'analytics']
-    })
-
-    // Invalidate Navojoa electoral analytics cache
-    await cacheManager.invalidate({
-      pattern: /^navojoa-electoral/,
-      tags: ['navojoa', 'electoral', 'analytics']
-    })
-
-    // For specific operations, we can be more targeted
-    if (operation === 'insert' && table === 'ciudadanos') {
-      // Only invalidate analytics, keep hierarchical structure
-      await cacheManager.invalidate({
-        pattern: /^analytics/,
-        tags: ['analytics', 'computed']
-      })
-    }
-
-    // Trigger cache warming for critical data
-    setTimeout(async () => {
-      try {
-        await this.warmCache()
-      } catch (error) {
-        console.error('Failed to warm cache after data update:', error)
-      }
-    }, 1000) // Delay to avoid immediate re-fetch
+  private static calculateTargetCoverage(regionType: string, population: number): number {
+    // Simplified target calculation
+    if (regionType === 'seccion') return population * 0.1
+    if (regionType === 'municipio') return population * 0.05
+    return population * 0.02
   }
 }
+
+// Export Navojoa-specific service for modularity
+export { navojoaElectoralService } from './navojoaElectoralService'

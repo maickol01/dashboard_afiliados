@@ -3,8 +3,9 @@ import { Person, Analytics, Period, LeaderPerformanceData } from '../types';
 import { DataService } from '../services/dataService';
 import { DatabaseError, NetworkError, ValidationError, ServiceError } from '../types/errors';
 import { useRealTimeUpdates } from './useRealTimeUpdates';
+import { DateRange } from '../components/shared/DateFilter';
 
-export const useData = () => {
+export const useData = (dateRange: DateRange | null) => {
   const [data, setData] = useState<Person[]>([]);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,7 +73,9 @@ export const useData = () => {
       
       // Obtener datos jerárquicos de Supabase con optimizaciones
       const dataFetchStart = Date.now();
-      const hierarchicalData = await DataService.getAllHierarchicalData(forceRefresh);
+      const hierarchicalData = dateRange
+        ? await DataService.getHierarchicalDataByDateRange(dateRange.startDate, dateRange.endDate)
+        : await DataService.getAllHierarchicalData(forceRefresh);
       const dataFetchTime = Date.now() - dataFetchStart;
       
       // Set data immediately for better UX
@@ -141,7 +144,7 @@ export const useData = () => {
         setLoading(false);
       }
     }
-  }, [handleError, retryCount]);
+  }, [handleError, retryCount, dateRange]);
 
   // Stable callback functions for real-time updates
   const handleRealTimeDataUpdate = useCallback(() => {

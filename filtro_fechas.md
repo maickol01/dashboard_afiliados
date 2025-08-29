@@ -36,7 +36,7 @@ const { data, loading, error, refetchData } = useData(dateRange);
 const handleFilterChange = (newDateRange) => {
   setDateRange(newDateRange);
 };
-
+  
 return (
   <div>
     <DateFilter onChange={handleFilterChange} />

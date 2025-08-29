@@ -26,7 +26,7 @@ const ConsolidatedAnalyticsPage: React.FC = () => {
     detectManualUpdates,
     clearRealTimeError,
     clearRecentUpdates
-  } = useData();
+  } = useData(null);
 
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('day');
 

@@ -5,15 +5,9 @@ import { exportToPDF } from '../../utils/export';
 import DateFilter, { DateRange } from '../shared/DateFilter';
 
 const HierarchyPage: React.FC = () => {
-  // Date range state management
   const [dateRange, setDateRange] = useState<DateRange | null>(null);
-  
-  // Pass date range state to useData hook
   const { data, loading, error, refetchData } = useData(dateRange);
 
-
-
-  // Handle filter change callback function
   const handleFilterChange = (newDateRange: DateRange | null) => {
     setDateRange(newDateRange);
   };
@@ -61,9 +55,10 @@ const HierarchyPage: React.FC = () => {
         <h2 className="text-xl font-semibold text-gray-900 mb-2">
           Estructura Jerárquica
         </h2>
-        <p className="text-gray-600">
+        <p className="text-gray-600 mb-4">
           Gestiona la estructura organizacional y exporta datos en Excel o PDF por elementos seleccionados.
         </p>
+        <DateFilter onFilterChange={handleFilterChange} />
       </div>
       
       <HierarchyTable 

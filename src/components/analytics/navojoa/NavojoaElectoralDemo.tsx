@@ -10,7 +10,7 @@ import SectionHeatMap from './SectionHeatMap';
  * This can be used as a reference for integrating into GeographicAnalysis
  */
 const NavojoaElectoralDemo: React.FC = () => {
-  const { data, loading, error } = useData();
+  const { data, loading, error } = useData(null);
 
   // Transform hierarchical data to section data
   const sectionData = React.useMemo(() => {
