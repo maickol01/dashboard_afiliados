@@ -1,44 +1,57 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Period } from '../../types';
 
-interface LineChartProps {
-  data: { date: string; count: number }[];
-  title: string;
+interface RegistrationsData {
+  daily: { date: string; count: number }[];
+  weekly: { date: string; count: number }[];
+  monthly: { date: string; count: number }[];
 }
 
-// Memoized chart component to prevent unnecessary re-renders
-const CustomLineChart: React.FC<LineChartProps> = React.memo(({ data, title }) => {
-  // Memoized data validation to prevent recalculation on every render
-  const validData = React.useMemo(() => {
-    if (!Array.isArray(data)) {
-      console.warn('LineChart: Invalid data type, expected array, got:', typeof data);
-      return [];
-    }
-    
-    return data.filter(item => {
-      if (!item || typeof item !== 'object') {
-        console.warn('LineChart: Invalid data item, expected object, got:', typeof item);
-        return false;
-      }
-      
-      if (typeof item.date !== 'string' || !item.date.trim()) {
-        console.warn('LineChart: Invalid date, expected non-empty string, got:', typeof item.date);
-        return false;
-      }
-      
-      if (typeof item.count !== 'number' || isNaN(item.count) || item.count < 0) {
-        console.warn('LineChart: Invalid count, expected non-negative number, got:', item.count);
-        return false;
-      }
-      
-      return true;
-    });
-  }, [data]);
+interface LineChartProps {
+  registrations: RegistrationsData;
+}
 
-  if (validData.length === 0) {
+const CustomLineChartComponent: React.FC<LineChartProps> = ({ registrations }) => {
+  const [period, setPeriod] = useState<Period>('day');
+
+  const chartData = useMemo(() => {
+    switch(period) {
+        case 'day': return registrations.daily;
+        case 'week': return registrations.weekly;
+        case 'month': return registrations.monthly;
+        default: return registrations.daily;
+    }
+  }, [period, registrations]);
+
+  const title = `Ciudadanos Registrados por ${period === 'day' ? 'Día' : period === 'week' ? 'Semana' : 'Mes'}`;
+
+  const headerControls = (
+    <div className="flex rounded-md shadow-xs">
+      {(['day', 'week', 'month'] as Period[]).map((p) => (
+        <button
+          key={p}
+          onClick={() => setPeriod(p)}
+          className={`px-4 py-2 text-sm font-medium border ${period === p
+            ? 'bg-primary text-white border-primary'
+            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+            } ${p === 'day' ? 'rounded-l-md' :
+              p === 'month' ? 'rounded-r-md' :
+                'border-l-0'
+            }`}>
+          {p === 'day' ? 'Día' : p === 'week' ? 'Semana' : 'Mes'}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (!chartData || chartData.length === 0) {
     return (
       <div className="bg-white p-6 rounded-lg shadow-md">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <div className="mt-2 sm:mt-0">{headerControls}</div>
+        </div>
         <div className="h-[300px] flex items-center justify-center text-gray-500">
           No hay datos disponibles para mostrar
         </div>
@@ -48,10 +61,13 @@ const CustomLineChart: React.FC<LineChartProps> = React.memo(({ data, title }) =
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+        <div className="mt-2 sm:mt-0">{headerControls}</div>
+      </div>
       <div className="w-full h-[300px] sm:h-[350px] lg:h-[400px]">
         <ResponsiveContainer width="100%" height="100%" debounce={200}>
-          <LineChart data={validData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
+          <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
               dataKey="date" 
@@ -79,27 +95,31 @@ const CustomLineChart: React.FC<LineChartProps> = React.memo(({ data, title }) =
               name="Registrados"
               dot={{ fill: '#235B4E', strokeWidth: 2, r: 4 }}
               activeDot={{ r: 6, fill: '#9F2241' }}
-              isAnimationActive={false}
             />
           </LineChart>
         </ResponsiveContainer>
       </div>
     </div>
   );
-}, (prevProps, nextProps) => {
-  // Custom comparison function for better memoization
-  if (prevProps.title !== nextProps.title) return false;
-  if (prevProps.data.length !== nextProps.data.length) return false;
-  
-  // Deep comparison of data array
-  for (let i = 0; i < prevProps.data.length; i++) {
-    if (prevProps.data[i].date !== nextProps.data[i].date || 
-        prevProps.data[i].count !== nextProps.data[i].count) {
-      return false;
-    }
+};
+
+const CustomLineChart = React.memo(CustomLineChartComponent, (prevProps, nextProps) => {
+  const prevReg = prevProps.registrations;
+  const nextReg = nextProps.registrations;
+
+  if (
+    prevReg.daily.length !== nextReg.daily.length ||
+    prevReg.weekly.length !== nextReg.weekly.length ||
+    prevReg.monthly.length !== nextReg.monthly.length
+  ) {
+    return false; // Re-render if lengths differ
   }
-  
-  return true;
+
+  // As a quick but effective check, compare the total count of daily registrations.
+  const prevTotal = prevReg.daily.reduce((sum, item) => sum + item.count, 0);
+  const nextTotal = nextReg.daily.reduce((sum, item) => sum + item.count, 0);
+
+  return prevTotal === nextTotal; // If totals are the same, prevent re-render
 });
 
 export default CustomLineChart;

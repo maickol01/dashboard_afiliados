@@ -235,7 +235,7 @@ const EnhancedLeaderPerformanceChart: React.FC<EnhancedLeaderPerformanceChartPro
         </div>
       </div>
       
-      <div className="w-full h-[600px]">
+      <div className="w-full h-[600px] overflow-x-auto">
         <ResponsiveContainer width="100%" height="100%" debounce={200} minWidth={Math.max(600, chartData.length * 60)}>
           <BarChart 
             data={chartData} 

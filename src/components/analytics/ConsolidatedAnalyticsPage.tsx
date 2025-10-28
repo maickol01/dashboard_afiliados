@@ -8,6 +8,7 @@ import { KPICardsSection, LeaderProductivityTable } from '../shared';
 import RealTimeIndicator from './RealTimeIndicator';
 import UpdateDetector from './UpdateDetector';
 import BrigadierPerformanceLineChart from '../charts/BrigadierPerformanceLineChart';
+import LeaderPerformanceLineChart from '../charts/LeaderPerformanceLineChart';
 import type { KPICard } from '../shared';
 
 const ConsolidatedAnalyticsPage: React.FC = () => {
@@ -27,8 +28,6 @@ const ConsolidatedAnalyticsPage: React.FC = () => {
     clearRealTimeError,
     clearRecentUpdates
   } = useData(null);
-
-  const [selectedPeriod, setSelectedPeriod] = useState<Period>('day');
 
   // Handle loading state
   if (loading) {
@@ -66,9 +65,6 @@ const ConsolidatedAnalyticsPage: React.FC = () => {
   }
 
   if (!analytics) return null;
-
-  // Get data for charts
-  const registrationData = getRegistrationsByPeriod(selectedPeriod);
 
   // Prepare KPI cards data from analytics
   const mainKPICards: KPICard[] = [
@@ -208,37 +204,16 @@ const ConsolidatedAnalyticsPage: React.FC = () => {
 
       {/* Charts Section */}
       <div className="space-y-6">
-        {/* Period Selector */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Registros por Período</h3>
-            <div className="flex rounded-md shadow-xs">
-              {(['day', 'week', 'month'] as Period[]).map((period) => (
-                <button
-                  key={period}
-                  onClick={() => setSelectedPeriod(period)}
-                  className={`px-4 py-2 text-sm font-medium border ${selectedPeriod === period
-                    ? 'bg-primary text-white border-primary'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                    } ${period === 'day' ? 'rounded-l-md' :
-                      period === 'month' ? 'rounded-r-md' :
-                        'border-l-0'
-                    }`}
-                >
-                  {period === 'day' ? 'Día' : period === 'week' ? 'Semana' : 'Mes'}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
         {/* Charts - Full width for better visibility */}
         <div className="space-y-6">
           {/* Citizens Registration Chart */}
           <div className="w-full">
             <LineChart
-              data={registrationData}
-              title={`Ciudadanos Registrados por ${selectedPeriod === 'day' ? 'Día' : selectedPeriod === 'week' ? 'Semana' : 'Mes'}`}
+              registrations={{
+                daily: analytics.dailyRegistrations,
+                weekly: analytics.weeklyRegistrations,
+                monthly: analytics.monthlyRegistrations,
+              }}
             />
           </div>
 
@@ -253,6 +228,13 @@ const ConsolidatedAnalyticsPage: React.FC = () => {
           {/* Brigadier Performance Line Chart */}
           <div className="w-full">
             <BrigadierPerformanceLineChart
+              hierarchicalData={hierarchicalData || []}
+            />
+          </div>
+
+          {/* Leader Performance Line Chart */}
+          <div className="w-full">
+            <LeaderPerformanceLineChart
               hierarchicalData={hierarchicalData || []}
             />
           </div>
