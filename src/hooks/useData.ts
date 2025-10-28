@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Person, Analytics, Period, LeaderPerformanceData } from '../types';
+import { Person, Analytics, Period, LeaderPerformanceData, PerformancePeriod } from '../types';
 import { DataService } from '../services/dataService';
 import { DatabaseError, NetworkError, ValidationError, ServiceError } from '../types/errors';
 import { useRealTimeUpdates } from './useRealTimeUpdates';
@@ -217,6 +217,11 @@ export const useData = (dateRange: DateRange | null) => {
   }, [memoizedRegistrationsByDay, memoizedRegistrationsByWeek, memoizedRegistrationsByMonth]);
 
   // Memoized leader performance data by period to prevent recalculation
+  const memoizedLeaderPerformanceByAll = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    return DataService.generatePeriodAwareLeaderPerformance(data, 'all');
+  }, [data]);
+
   const memoizedLeaderPerformanceByDay = useMemo(() => {
     if (!data || data.length === 0) return [];
     return DataService.generatePeriodAwareLeaderPerformance(data, 'day');
@@ -233,8 +238,10 @@ export const useData = (dateRange: DateRange | null) => {
   }, [data]);
 
   // Stabilized getLeaderPerformanceByPeriod function with useCallback and memoized results
-  const getLeaderPerformanceByPeriodStable = useCallback((period: Period) => {
+  const getLeaderPerformanceByPeriodStable = useCallback((period: PerformancePeriod) => {
     switch (period) {
+      case 'all':
+        return memoizedLeaderPerformanceByAll;
       case 'day':
         return memoizedLeaderPerformanceByDay;
       case 'week':
@@ -242,9 +249,9 @@ export const useData = (dateRange: DateRange | null) => {
       case 'month':
         return memoizedLeaderPerformanceByMonth;
       default:
-        return memoizedLeaderPerformanceByDay;
+        return memoizedLeaderPerformanceByAll;
     }
-  }, [memoizedLeaderPerformanceByDay, memoizedLeaderPerformanceByWeek, memoizedLeaderPerformanceByMonth]);
+  }, [memoizedLeaderPerformanceByAll, memoizedLeaderPerformanceByDay, memoizedLeaderPerformanceByWeek, memoizedLeaderPerformanceByMonth]);
 
   const searchData = useCallback((query: string): Person[] => {
     if (!query.trim()) return data;
@@ -381,7 +388,7 @@ export const useData = (dateRange: DateRange | null) => {
     return validateRegistrationData(rawData);
   }, [getRegistrationsByPeriodMemoized, validateRegistrationData]);
 
-  const getValidatedLeaderPerformanceByPeriod = useCallback((period: Period) => {
+  const getValidatedLeaderPerformanceByPeriod = useCallback((period: PerformancePeriod) => {
     const rawData = getLeaderPerformanceByPeriodStable(period);
     return validateLeaderPerformanceData(rawData);
   }, [getLeaderPerformanceByPeriodStable, validateLeaderPerformanceData]);

@@ -1,6 +1,6 @@
 
 import { supabase, type Lider, type Brigadista, type Movilizador, type Ciudadano } from '../lib/supabase'
-import { Person, Analytics, LeaderPerformanceData, Period } from '../types'
+import { Person, Analytics, LeaderPerformanceData, Period, PerformancePeriod } from '../types';
 import { DatabaseError, NetworkError, ServiceError, ValidationError } from '../types/errors'
 import { withDatabaseRetry, CircuitBreaker } from '../utils/retry'
 import { cacheManager } from './cacheManager'
@@ -849,20 +849,37 @@ export class DataService {
   }
 
   private static generateDailyRegistrations(people: Person[], startDate: Date, endDate: Date) {
-    const days: { date: string; count: number }[] = []
-    const current = new Date(startDate)
+    const dateMap = new Map<string, number>();
+
+    // Group by local date string
+    people.forEach(p => {
+        const localDate = new Date(p.created_at);
+        
+        // We only care about dates within the range
+        if (localDate >= startDate && localDate <= endDate) {
+            const year = localDate.getFullYear();
+            const month = localDate.getMonth();
+            const day = localDate.getDate();
+            const localDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            dateMap.set(localDateStr, (dateMap.get(localDateStr) || 0) + 1);
+        }
+    });
+
+    const days: { date: string; count: number }[] = [];
+    const current = new Date(startDate);
+    current.setHours(0, 0, 0, 0);
 
     while (current <= endDate) {
-      const dateStr = current.toISOString().split('T')[0]
-      const count = people.filter(p =>
-        p.created_at.toISOString().split('T')[0] === dateStr
-      ).length
+        const year = current.getFullYear();
+        const month = current.getMonth();
+        const day = current.getDate();
+        const localDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-      days.push({ date: dateStr, count })
-      current.setDate(current.getDate() + 1)
+        days.push({ date: localDateStr, count: dateMap.get(localDateStr) || 0 });
+        current.setDate(current.getDate() + 1);
     }
 
-    return days
+    return days;
   }
 
   private static generateWeeklyRegistrations(people: Person[]) {
@@ -978,17 +995,42 @@ export class DataService {
   }
 
   // Simplified helper methods for basic functionality
-  static generatePeriodAwareLeaderPerformance(hierarchicalData: Person[], period: Period): LeaderPerformanceData[] {
-    return hierarchicalData.map(leader => ({
-      name: leader.name,
-      citizenCount: leader.registeredCount,
-      brigadierCount: leader.children?.length || 0,
-      mobilizerCount: leader.children?.reduce((sum, brigadista) => sum + (brigadista.children?.length || 0), 0) || 0,
-      targetProgress: leader.registeredCount >= 50 ? 100 : (leader.registeredCount / 50) * 100,
-      trend: 'stable' as const,
-      efficiency: leader.registeredCount > 0 ? (leader.registeredCount / Math.max(1, leader.children?.length || 1)) : 0,
-      lastUpdate: new Date()
-    }))
+  static generatePeriodAwareLeaderPerformance(hierarchicalData: Person[], period: PerformancePeriod): LeaderPerformanceData[] {
+    let dataToProcess = hierarchicalData;
+
+    if (period !== 'all') {
+        const now = new Date();
+        let startDate: Date;
+
+        if (period === 'day') {
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+        } else if (period === 'week') {
+            const firstDayOfWeek = new Date(now);
+            firstDayOfWeek.setDate(now.getDate() - now.getDay());
+            startDate = new Date(firstDayOfWeek.getFullYear(), firstDayOfWeek.getMonth(), firstDayOfWeek.getDate(), 0, 0, 0, 0);
+        } else { // month
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        }
+        
+        dataToProcess = this.filterHierarchyByDate(hierarchicalData, startDate, now);
+    }
+
+    return dataToProcess.map(leader => {
+        const brigadierCount = leader.children?.length || 0;
+        const mobilizerCount = leader.children?.reduce((sum, brigadista) => sum + (brigadista.children?.length || 0), 0) || 0;
+        const citizenCount = leader.children?.reduce((sum, brigadista) => sum + (brigadista.children?.reduce((s, m) => s + (m.children?.length || 0), 0) || 0), 0) || 0;
+        
+        return {
+            name: leader.name,
+            citizenCount,
+            brigadierCount,
+            mobilizerCount,
+            targetProgress: leader.registeredCount >= 50 ? 100 : (leader.registeredCount / 50) * 100, // This uses total registeredCount for progress
+            trend: 'stable' as const,
+            efficiency: citizenCount > 0 ? (citizenCount / Math.max(1, brigadierCount)) : 0,
+            lastUpdate: new Date()
+        };
+    });
   }
 
   private static calculateRegistrationSpeed(people: Person[]): { average: number; fastest: number; slowest: number } {

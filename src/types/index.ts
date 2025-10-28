@@ -120,6 +120,12 @@ export interface Analytics {
 
 export type Period = 'day' | 'week' | 'month';
 
+export type PerformancePeriod = 'all' | 'month' | 'week' | 'day';
+
+export type PerformanceRole = 'lider' | 'brigadista' | 'movilizador';
+
+
+
 export interface LeaderPerformanceData {
   name: string;
   citizenCount: number;
