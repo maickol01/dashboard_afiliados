@@ -236,7 +236,7 @@ const EnhancedLeaderPerformanceChart: React.FC<EnhancedLeaderPerformanceChartPro
       </div>
       
       <div className="w-full h-[600px]">
-        <ResponsiveContainer width="100%" height="100%" minWidth={Math.max(600, chartData.length * 60)}>
+        <ResponsiveContainer width="100%" height="100%" debounce={200} minWidth={Math.max(600, chartData.length * 60)}>
           <BarChart 
             data={chartData} 
             margin={{ top: 5, right: 20, left: -10, bottom: 90 }}
@@ -258,10 +258,12 @@ const EnhancedLeaderPerformanceChart: React.FC<EnhancedLeaderPerformanceChartPro
               axisLine={{ stroke: '#E5E7EB' }}
               tickLine={{ stroke: '#E5E7EB' }}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }} isAnimationActive={false} />
             <Bar 
               dataKey="ciudadanos" 
               radius={[6, 6, 0, 0]}
+              isAnimationActive={false}
+              animationDuration={0}
             >
               {chartData.map((entry, index) => (
                 <Cell 

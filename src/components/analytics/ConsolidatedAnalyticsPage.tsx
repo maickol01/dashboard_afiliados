@@ -7,6 +7,7 @@ import EnhancedLeaderPerformanceChart from '../charts/EnhancedLeaderPerformanceC
 import { KPICardsSection, LeaderProductivityTable } from '../shared';
 import RealTimeIndicator from './RealTimeIndicator';
 import UpdateDetector from './UpdateDetector';
+import BrigadierPerformanceLineChart from '../charts/BrigadierPerformanceLineChart';
 import type { KPICard } from '../shared';
 
 const ConsolidatedAnalyticsPage: React.FC = () => {
@@ -246,6 +247,13 @@ const ConsolidatedAnalyticsPage: React.FC = () => {
             <EnhancedLeaderPerformanceChart
               hierarchicalData={hierarchicalData || []}
               title="Rendimiento"
+            />
+          </div>
+
+          {/* Brigadier Performance Line Chart */}
+          <div className="w-full">
+            <BrigadierPerformanceLineChart
+              hierarchicalData={hierarchicalData || []}
             />
           </div>
         </div>

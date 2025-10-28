@@ -50,7 +50,7 @@ const CustomLineChart: React.FC<LineChartProps> = React.memo(({ data, title }) =
     <div className="bg-white p-6 rounded-lg shadow-md">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
       <div className="w-full h-[300px] sm:h-[350px] lg:h-[400px]">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" debounce={200}>
           <LineChart data={validData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
@@ -63,6 +63,7 @@ const CustomLineChart: React.FC<LineChartProps> = React.memo(({ data, title }) =
             />
             <YAxis tick={{ fontSize: 12 }} />
             <Tooltip 
+              isAnimationActive={false}
               contentStyle={{ 
                 backgroundColor: '#f9fafb', 
                 border: '1px solid #e5e7eb',
