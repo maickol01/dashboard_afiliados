@@ -20,12 +20,10 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  // Reset displayLimit when filters or search terms change
   useEffect(() => {
     setDisplayLimit(INITIAL_LOAD_COUNT);
-  }, [searchTerm, roleFilter, data]); // Also reset if the base data changes
+  }, [searchTerm, roleFilter, data]);
 
-  // Intersection Observer for infinite scrolling
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -33,7 +31,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
           setDisplayLimit((prevLimit) => prevLimit + LOAD_MORE_COUNT);
         }
       },
-      { threshold: 1.0 } // Trigger when 100% of the sentinel is visible
+      { threshold: 1.0 }
     );
 
     if (loadMoreRef.current) {
@@ -45,7 +43,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
         observer.unobserve(loadMoreRef.current);
       }
     };
-  }, [loadMoreRef, displayLimit]); // Re-run if ref or displayLimit changes
+  }, [loadMoreRef, displayLimit]);
 
   const handleExportExcel = () => {
     exportInteractiveExcel(data, Array.from(selectedItems));
@@ -73,7 +71,6 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
 
   const getAllPeopleFlat = (people: Person[]): Person[] => {
     const result: Person[] = [];
-
     const flatten = (persons: Person[]) => {
       persons.forEach(person => {
         result.push(person);
@@ -82,164 +79,68 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
         }
       });
     };
-
     flatten(people);
     return result;
   };
 
-  const getFilteredDataWithHierarchy = (): Person[] => {
-    if (roleFilter === 'all') {
-      // Vista jerárquica completa
-      return data.filter(person => {
-        const matchesSearch = person.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          person.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (person.direccion && person.direccion.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (person.colonia && person.colonia.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (person.seccion && person.seccion.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (person.numero_cel && person.numero_cel.toLowerCase().includes(searchTerm.toLowerCase()));
-        return matchesSearch;
-      });
-    } else {
-      // Vista filtrada por rol pero manteniendo estructura jerárquica
-      const allPeople = getAllPeopleFlat(data);
-      const filteredPeople = allPeople.filter(person => {
-        const matchesSearch = person.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          person.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (person.direccion && person.direccion.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (person.colonia && person.colonia.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (person.seccion && person.seccion.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (person.numero_cel && person.numero_cel.toLowerCase().includes(searchTerm.toLowerCase()));
-        const matchesRole = person.role === roleFilter;
-        return matchesSearch && matchesRole;
-      });
+  const getFilteredData = (): Person[] => {
+    const allPeople = getAllPeopleFlat(data);
 
-      // Reconstruir la estructura jerárquica para los elementos filtrados
-      if (roleFilter === 'leader') {
-        return filteredPeople.map(leader => {
-          const originalLeader = data.find(l => l.id === leader.id);
-          return originalLeader ? { ...originalLeader } : leader;
-        });
-      } else if (roleFilter === 'brigadier') {
-        // Crear estructura donde los brigadistas son el nivel superior
-        return filteredPeople.map(brigadier => {
-          // Encontrar el brigadista original con sus hijos
-          let originalBrigadier: Person | undefined;
-          for (const leader of data) {
-            const foundBrigadier = leader.children?.find(b => b.id === brigadier.id);
-            if (foundBrigadier) {
-              originalBrigadier = foundBrigadier;
-              break;
-            }
-          }
-          return originalBrigadier ? { ...originalBrigadier } : brigadier;
-        });
-      } else if (roleFilter === 'mobilizer') {
-        // Crear estructura donde los movilizadores son el nivel superior
-        return filteredPeople.map(mobilizer => {
-          let originalMobilizer: Person | undefined;
-          for (const leader of data) {
-            for (const brigadier of leader.children || []) {
-              const foundMobilizer = brigadier.children?.find(m => m.id === mobilizer.id);
-              if (foundMobilizer) {
-                originalMobilizer = foundMobilizer;
-                break;
-              }
-            }
-            if (originalMobilizer) break;
-          }
-          return originalMobilizer ? { ...originalMobilizer } : mobilizer;
-        });
-      } else {
-        // Para ciudadanos, mostrar vista plana
-        return filteredPeople;
-      }
-    }
+    return allPeople.filter(person => {
+      const matchesRole = roleFilter === 'all' || person.role === roleFilter;
+      if (!matchesRole) return false;
+
+      if (searchTerm.trim() === '') return true;
+      const lowerSearchTerm = searchTerm.toLowerCase();
+
+      return (
+        person.nombre.toLowerCase().includes(lowerSearchTerm) ||
+        person.id.toLowerCase().includes(lowerSearchTerm) ||
+        (person.direccion && person.direccion.toLowerCase().includes(lowerSearchTerm)) ||
+        (person.colonia && person.colonia.toLowerCase().includes(lowerSearchTerm)) ||
+        (person.seccion && person.seccion.toLowerCase().includes(lowerSearchTerm)) ||
+        (person.numero_cel && person.numero_cel.toLowerCase().includes(lowerSearchTerm))
+      );
+    });
   };
 
-  // Función para seleccionar todos los elementos del rol actual
+  const filteredData = getFilteredData();
+  const showHierarchicalView = roleFilter === 'all' && searchTerm.trim() === '';
+
   const selectAllCurrentRole = () => {
-    const filteredData = getFilteredDataWithHierarchy();
-    const allCurrentRoleIds: string[] = [];
-
-    if (roleFilter === 'all') {
-      // Seleccionar todos los líderes
-      allCurrentRoleIds.push(...data.map(leader => leader.id));
-    } else if (roleFilter === 'citizen') {
-      // Para ciudadanos, obtener IDs directamente
-      allCurrentRoleIds.push(...filteredData.map(person => person.id));
-    } else {
-      // Para otros roles, obtener IDs de la vista filtrada
-      allCurrentRoleIds.push(...filteredData.map(person => person.id));
-    }
-
-    const allSelected = allCurrentRoleIds.every(id => selectedItems.has(id));
+    const idsToSelect = filteredData.map(p => p.id);
+    const allSelected = idsToSelect.length > 0 && idsToSelect.every(id => selectedItems.has(id));
 
     const newSelected = new Set(selectedItems);
     if (allSelected) {
-      allCurrentRoleIds.forEach(id => newSelected.delete(id));
+      idsToSelect.forEach(id => newSelected.delete(id));
     } else {
-      allCurrentRoleIds.forEach(id => newSelected.add(id));
+      idsToSelect.forEach(id => newSelected.add(id));
     }
     setSelectedItems(newSelected);
   };
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'lider':
-      case 'leader': return 'bg-[#235B4E] text-white'; // Primary color
-      case 'brigadista':
-      case 'brigadier': return 'bg-[#9F2241] text-white'; // Secondary color
-      case 'movilizador':
-      case 'mobilizer': return 'bg-[#BC955C] text-white'; // Accent color
-      case 'ciudadano':
-      case 'citizen': return 'bg-[#6F7271] text-white'; // Neutral color
+      case 'lider': return 'bg-[#235B4E] text-white';
+      case 'brigadista': return 'bg-[#9F2241] text-white';
+      case 'movilizador': return 'bg-[#BC955C] text-white';
+      case 'ciudadano': return 'bg-[#6F7271] text-white';
       default: return 'bg-gray-500 text-white';
     }
   };
 
   const getRoleName = (role: string) => {
     switch (role) {
-      case 'lider':
-      case 'leader': return 'Líder';
-      case 'brigadista':
-      case 'brigadier': return 'Brigadista';
-      case 'movilizador':
-      case 'mobilizer': return 'Movilizador';
-      case 'ciudadano':
-      case 'citizen': return 'Ciudadano';
+      case 'lider': return 'Líder';
+      case 'brigadista': return 'Brigadista';
+      case 'movilizador': return 'Movilizador';
+      case 'ciudadano': return 'Ciudadano';
       default: return role;
     }
   };
 
-  const getSelectAllButtonText = () => {
-    const filteredData = getFilteredDataWithHierarchy();
-    let allCurrentRoleIds: string[] = [];
-
-    if (roleFilter === 'all') {
-      allCurrentRoleIds = data.map(leader => leader.id);
-    } else {
-      allCurrentRoleIds = filteredData.map(person => person.id);
-    }
-
-    const allSelected = allCurrentRoleIds.length > 0 && allCurrentRoleIds.every(id => selectedItems.has(id));
-
-    switch (roleFilter) {
-      case 'all':
-        return allSelected ? 'Deseleccionar Todos los Líderes' : 'Seleccionar Todos los Líderes';
-      case 'leader':
-        return allSelected ? 'Deseleccionar Todos los Líderes' : 'Seleccionar Todos los Líderes';
-      case 'brigadier':
-        return allSelected ? 'Deseleccionar Todos los Brigadistas' : 'Seleccionar Todos los Brigadistas';
-      case 'mobilizer':
-        return allSelected ? 'Deseleccionar Todos los Movilizadores' : 'Seleccionar Todos los Movilizadores';
-      case 'citizen':
-        return allSelected ? 'Deseleccionar Todos los Ciudadanos' : 'Seleccionar Todos los Ciudadanos';
-      default:
-        return 'Seleccionar Todos';
-    }
-  };
-
-  const renderHierarchyLevel = (people: Person[], level: number = 0) => {
+  const renderHierarchyLevel = (people: Person[], level: number = 0): React.ReactNode[] => {
     return people.slice(0, displayLimit).map((person) => (
       <React.Fragment key={person.id}>
         <tr className="hover:bg-gray-50">
@@ -271,18 +172,10 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
               <span className="text-sm font-medium text-gray-900">{person.nombre}</span>
             </div>
           </td>
-          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-            {person.direccion || '-'}
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-            {person.colonia || '-'}
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-            {person.seccion || '-'}
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-            {person.numero_cel || '-'}
-          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{person.direccion || '-'}</td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{person.colonia || '-'}</td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{person.seccion || '-'}</td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{person.numero_cel || '-'}</td>
         </tr>
         {expandedItems.has(person.id) && person.children &&
           renderHierarchyLevel(person.children, level + 1)
@@ -310,46 +203,29 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
             <span className="text-sm font-medium text-gray-900">{person.nombre}</span>
           </div>
         </td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-          {person.direccion || '-'}
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-          {person.colonia || '-'}
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-          {person.seccion || '-'}
-        </td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-          {person.numero_cel || '-'}
-        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{person.direccion || '-'}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{person.colonia || '-'}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{person.seccion || '-'}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{person.numero_cel || '-'}</td>
       </tr>
     ));
   };
 
-  const filteredData = getFilteredDataWithHierarchy();
-
-  // Determinar si mostrar vista jerárquica o plana
-  const showHierarchicalView = roleFilter === 'all' || roleFilter === 'leader' || roleFilter === 'brigadier' || roleFilter === 'mobilizer';
-
   return (
     <div className="bg-white shadow-md rounded-lg overflow-hidden">
-      {/* Controles */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex flex-col sm:flex-row gap-4">
-            {/* Búsqueda */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Buscar por nombre, dirección, colonia, sección o teléfono..."
+                placeholder="Buscar por nombre, dirección, etc..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
               />
             </div>
-
-            {/* Filtro por rol */}
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <select
@@ -358,24 +234,20 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
                 className="pl-10 pr-8 py-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary appearance-none"
               >
                 <option value="all">Todos los roles</option>
-                <option value="leader">Líderes</option>
-                <option value="brigadier">Brigadistas</option>
-                <option value="mobilizer">Movilizadores</option>
-                <option value="citizen">Ciudadanos</option>
+                <option value="lider">Líderes</option>
+                <option value="brigadista">Brigadistas</option>
+                <option value="movilizador">Movilizadores</option>
+                <option value="ciudadano">Ciudadanos</option>
               </select>
             </div>
           </div>
-
           <div className="flex flex-wrap gap-2">
-            {/* Seleccionar todos */}
             <button
               onClick={selectAllCurrentRole}
               className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 border border-gray-300 text-sm"
             >
-              {getSelectAllButtonText()}
+              Seleccionar Visibles
             </button>
-
-            {/* Exportar Excel */}
             <button
               onClick={handleExportExcel}
               disabled={selectedItems.size === 0}
@@ -384,8 +256,6 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
               <Download className="h-4 w-4 mr-2" />
               Excel ({selectedItems.size})
             </button>
-
-            {/* Exportar PDF */}
             <button
               onClick={() => onExportPDF(Array.from(selectedItems))}
               disabled={selectedItems.size === 0}
@@ -397,41 +267,25 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
           </div>
         </div>
       </div>
-
-      {/* Tabla */}
       <div className="overflow-x-auto">
         <table id="hierarchy-table" className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Rol
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Nombre
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Dirección
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Colonia
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Sección
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Teléfono
-              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dirección</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Colonia</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sección</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teléfono</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {showHierarchicalView
-              ? renderHierarchyLevel(filteredData)
+              ? renderHierarchyLevel(data)
               : renderFlatData(filteredData)
             }
           </tbody>
         </table>
-
-        {/* Sentinel element for infinite scroll */}
         {filteredData.length > displayLimit && (
           <div
             ref={loadMoreRef}
