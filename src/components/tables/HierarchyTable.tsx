@@ -6,12 +6,13 @@ import { exportInteractiveExcel } from '../../utils/export';
 interface HierarchyTableProps {
   data: Person[];
   onExportPDF: (selectedItems: string[]) => void;
+  onRowClick: (person: Person) => void;
 }
 
 const INITIAL_LOAD_COUNT = 50;
 const LOAD_MORE_COUNT = 20;
 
-const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) => {
+const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF, onRowClick }) => {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -143,7 +144,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
   const renderHierarchyLevel = (people: Person[], level: number = 0): React.ReactNode[] => {
     return people.slice(0, displayLimit).map((person) => (
       <React.Fragment key={person.id}>
-        <tr className="hover:bg-gray-50">
+        <tr className="hover:bg-gray-50 cursor-pointer" onClick={() => onRowClick(person)}>
           <td className="px-6 py-4 whitespace-nowrap">
             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(person.role)}`}>
               {getRoleName(person.role)}
@@ -153,7 +154,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
             <div className="flex items-center" style={{ paddingLeft: `${level * 20}px` }}>
               {person.children && person.children.length > 0 && (
                 <button
-                  onClick={() => toggleExpanded(person.id)}
+                  onClick={(e) => { e.stopPropagation(); toggleExpanded(person.id); }}
                   className="mr-2 p-1 rounded-sm hover:bg-gray-200"
                 >
                   {expandedItems.has(person.id) ? (
@@ -166,7 +167,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
               <input
                 type="checkbox"
                 checked={selectedItems.has(person.id)}
-                onChange={() => toggleItemSelection(person.id)}
+                onChange={(e) => { e.stopPropagation(); toggleItemSelection(person.id); }}
                 className="mr-2 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded-sm"
               />
               <span className="text-sm font-medium text-gray-900">{person.nombre}</span>
@@ -186,7 +187,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
 
   const renderFlatData = (people: Person[]) => {
     return people.slice(0, displayLimit).map((person) => (
-      <tr key={person.id} className="hover:bg-gray-50">
+      <tr key={person.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => onRowClick(person)}>
         <td className="px-6 py-4 whitespace-nowrap">
           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(person.role)}`}>
             {getRoleName(person.role)}
@@ -197,7 +198,7 @@ const HierarchyTable: React.FC<HierarchyTableProps> = ({ data, onExportPDF }) =>
             <input
               type="checkbox"
               checked={selectedItems.has(person.id)}
-              onChange={() => toggleItemSelection(person.id)}
+              onChange={(e) => { e.stopPropagation(); toggleItemSelection(person.id); }}
               className="mr-2 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded-sm"
             />
             <span className="text-sm font-medium text-gray-900">{person.nombre}</span>

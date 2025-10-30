@@ -21,17 +21,10 @@ import {
   TerritorialSummary
 } from '../types/territorial'
 
-import { 
-  NavojoaElectoralAnalytics,
-  NavojoaElectoralSection,
-  ElectoralKPIs
-} from '../types/navojoa-electoral'
-import { navojoaElectoralService } from './navojoaElectoralService'
 
 export class DataService {
   private static circuitBreaker = new CircuitBreaker(5, 60000) // 5 failures, 1 minute recovery
   private static readonly CACHE_VERSION = '2.0.0'
-  private static lastUpdateCheck: Date = new Date()
 
   // Initialize cache warming strategies
   static {
@@ -1454,6 +1447,52 @@ export class DataService {
       console.error('Error generating data hash:', error)
       return '0-0'
     }
+  }
+
+  // ... (existing methods)
+
+  static async getLideresList(): Promise<{ id: string; nombre: string }[]> {
+    const { data, error } = await supabase
+      .from('lideres')
+      .select('id, nombre')
+      .order('nombre', { ascending: true });
+
+    if (error) {
+      throw new DatabaseError('Failed to fetch leaders list', error.code, error.details, error.hint);
+    }
+    return data || [];
+  }
+
+  static async getBrigadistasList(): Promise<{ id: string; nombre: string }[]> {
+    const { data, error } = await supabase
+      .from('brigadistas')
+      .select('id, nombre')
+      .order('nombre', { ascending: true });
+
+    if (error) {
+      throw new DatabaseError('Failed to fetch brigadistas list', error.code, error.details, error.hint);
+    }
+    return data || [];
+  }
+
+  static async reassignPerson(personId: string, newParentId: string, role: 'brigadista' | 'movilizador'): Promise<void> {
+    return this.circuitBreaker.execute(async () => {
+      return withDatabaseRetry(async () => {
+        const rpcName = role === 'brigadista' ? 'reasignar_brigadista' : 'reasignar_movilizador';
+        const params = role === 'brigadista' 
+          ? { brigadista_id_in: personId, nuevo_lider_id_in: newParentId }
+          : { movilizador_id_in: personId, nuevo_brigadista_id_in: newParentId };
+
+        const { error } = await supabase.rpc(rpcName, params);
+
+        if (error) {
+          throw new DatabaseError(`Failed to execute ${rpcName} RPC`, error.code, error.details, error.hint);
+        }
+
+        await this.invalidateDataCache();
+        console.log(`Reassignment successful for ${role} ${personId}`);
+      });
+    });
   }
 
   // Enhanced health check with cache metrics
