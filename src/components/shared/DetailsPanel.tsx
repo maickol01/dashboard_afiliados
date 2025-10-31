@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronsUpDown } from 'lucide-react';
+import { X, ChevronsUpDown, Users } from 'lucide-react';
 import { Person } from '../../types';
 
 interface DetailsPanelProps {
@@ -9,17 +9,48 @@ interface DetailsPanelProps {
   lideres: { id: string; nombre: string }[];
   brigadistas: { id: string; nombre: string }[];
   onReassign: (personId: string, newParentId: string, role: 'brigadista' | 'movilizador') => void;
+  hierarchicalData: Person[];
 }
 
-const DetailsPanel: React.FC<DetailsPanelProps> = ({ person, isOpen, onClose, lideres, brigadistas, onReassign }) => {
+const DetailsPanel: React.FC<DetailsPanelProps> = ({ person, isOpen, onClose, lideres, brigadistas, onReassign, hierarchicalData }) => {
   const [newParentId, setNewParentId] = useState('');
 
   useEffect(() => {
-    // Reset selection when panel opens for a new person
     if (person) {
       setNewParentId('');
     }
   }, [person]);
+
+  const findParents = (person: Person | null, allData: Person[]): { liderName?: string, brigadistaName?: string, movilizadorName?: string } => {
+    if (!person) return {};
+
+    for (const lider of allData) {
+      if (person.role === 'brigadista' && lider.id === person.lider_id) {
+        return { liderName: lider.name };
+      }
+      if (lider.children) {
+        for (const brigadista of lider.children) {
+          if (person.role === 'movilizador' && brigadista.id === person.brigadista_id) {
+            return { liderName: lider.name, brigadistaName: brigadista.name };
+          }
+          if (brigadista.children) {
+            for (const movilizador of brigadista.children) {
+              if (person.role === 'ciudadano' && movilizador.id === person.movilizador_id) {
+                return {
+                  liderName: lider.name,
+                  brigadistaName: brigadista.name,
+                  movilizadorName: movilizador.name
+                };
+              }
+            }
+          }
+        }
+      }
+    }
+    return {};
+  };
+
+  const parentNames = findParents(person, hierarchicalData);
 
   if (!isOpen || !person) {
     return null;
@@ -86,6 +117,36 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ person, isOpen, onClose, li
                 <h3 className="text-2xl font-bold text-primary">{person.nombre}</h3>
                 <p className="text-sm text-gray-500">{getRoleName(person.role)}</p>
               </div>
+
+              {/* Hierarchy Section */}
+              {person.role !== 'lider' && (
+                <div className="border-t border-gray-200 pt-4">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                    <Users className="h-5 w-5 mr-2 text-gray-500" />
+                    Jerarquía
+                  </h4>
+                  <dl className="space-y-2">
+                    {parentNames.liderName && (
+                      <div className="flex justify-between text-sm py-1">
+                        <dt className="font-medium text-gray-600">Líder:</dt>
+                        <dd className="text-gray-800 text-right">{parentNames.liderName}</dd>
+                      </div>
+                    )}
+                    {parentNames.brigadistaName && (
+                      <div className="flex justify-between text-sm py-1">
+                        <dt className="font-medium text-gray-600">Brigadista:</dt>
+                        <dd className="text-gray-800 text-right">{parentNames.brigadistaName}</dd>
+                      </div>
+                    )}
+                    {parentNames.movilizadorName && (
+                      <div className="flex justify-between text-sm py-1">
+                        <dt className="font-medium text-gray-600">Movilizador:</dt>
+                        <dd className="text-gray-800 text-right">{parentNames.movilizadorName}</dd>
+                      </div>
+                    )}
+                  </dl>
+                </div>
+              )}
 
               {/* Details List */}
               <div className="border-t border-gray-200 pt-4">

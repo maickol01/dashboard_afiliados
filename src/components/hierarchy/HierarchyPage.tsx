@@ -121,6 +121,7 @@ const HierarchyPage: React.FC = () => {
         lideres={lideres}
         brigadistas={brigadistas}
         onReassign={handleReassign}
+        hierarchicalData={data}
       />
     </div>
   );

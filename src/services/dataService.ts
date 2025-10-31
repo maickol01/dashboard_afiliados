@@ -68,7 +68,7 @@ export class DataService {
             throw new DatabaseError(
               'Failed to fetch hierarchical data with nested query',
               error.code,
-              error.details,
+              error.details ? { message: error.details } : undefined,
               error.hint
             )
           }
@@ -204,7 +204,7 @@ export class DataService {
    * Calculates registeredCount during transformation in a single pass
    * Maintains full compatibility with existing Person[] interface
    */
-  private static transformSupabaseHierarchy(lideresData: any[]): Person[] {
+  private static transformSupabaseHierarchy(lideresData: Partial<Lider & { brigadistas: Partial<Brigadista & { movilizadores: Partial<Movilizador & { ciudadanos: Partial<Ciudadano>[] }>[] }>[] }>[]): Person[] {
     if (!lideresData || !Array.isArray(lideresData)) {
       console.warn('Invalid lideres data provided to transformSupabaseHierarchy')
       return []
@@ -212,19 +212,19 @@ export class DataService {
 
     return lideresData.map(lider => {
       // Transform brigadistas and their nested data
-      const brigadistas = (lider.brigadistas || []).map((brigadista: any) => {
+      const brigadistas = (lider.brigadistas || []).map((brigadista) => {
         // Transform movilizadores and their nested data
-        const movilizadores = (brigadista.movilizadores || []).map((movilizador: any) => {
+        const movilizadores = (brigadista.movilizadores || []).map((movilizador) => {
           // Transform ciudadanos
-          const ciudadanos = (movilizador.ciudadanos || []).map((ciudadano: any) => ({
-            ...this.convertToPersonFormat(ciudadano, 'ciudadano'),
+          const ciudadanos = (movilizador.ciudadanos || []).map((ciudadano) => ({
+            ...this.convertToPersonFormat(ciudadano as Ciudadano, 'ciudadano'),
             parentId: movilizador.id,
             movilizador_id: movilizador.id
           }))
 
           // Create movilizador person with calculated registeredCount
           return {
-            ...this.convertToPersonFormat(movilizador, 'movilizador'),
+            ...this.convertToPersonFormat(movilizador as Movilizador, 'movilizador'),
             parentId: brigadista.id,
             brigadista_id: brigadista.id,
             children: ciudadanos,
@@ -240,7 +240,7 @@ export class DataService {
 
         // Create brigadista person with calculated registeredCount
         return {
-          ...this.convertToPersonFormat(brigadista, 'brigadista'),
+          ...this.convertToPersonFormat(brigadista as Brigadista, 'brigadista'),
           parentId: lider.id,
           lider_id: lider.id,
           children: movilizadores,
@@ -256,7 +256,7 @@ export class DataService {
 
       // Create lider person with calculated registeredCount
       return {
-        ...this.convertToPersonFormat(lider, 'lider'),
+        ...this.convertToPersonFormat(lider as Lider, 'lider'),
         children: brigadistas,
         registeredCount: liderRegisteredCount
       }
@@ -267,7 +267,7 @@ export class DataService {
    * Validates the nested structure received from Supabase
    * Ensures data integrity before transformation with comprehensive validation
    */
-  private static validateNestedStructure(lideresData: any[]): void {
+  private static validateNestedStructure(lideresData: Partial<Lider & { brigadistas: Partial<Brigadista & { movilizadores: Partial<Movilizador & { ciudadanos: Partial<Ciudadano>[] }>[] }>[] }>[]): void {
     try {
       // Basic structure validation
       if (!lideresData) {
@@ -286,7 +286,7 @@ export class DataService {
       // Validate each leader and their nested hierarchy
       lideresData.forEach((lider, liderIndex) => {
         this.validateLeaderStructure(lider, liderIndex)
-        this.validateBrigadistasHierarchy(lider, liderIndex)
+        this.validateBrigadistasHierarchy(lider)
       })
 
       // Perform integrity checks across the entire hierarchy
@@ -310,14 +310,14 @@ export class DataService {
   /**
    * Validates individual leader structure and required fields
    */
-  private static validateLeaderStructure(lider: any, liderIndex: number): void {
+  private static validateLeaderStructure(lider: Partial<Lider & { brigadistas: Partial<Brigadista & { movilizadores: Partial<Movilizador & { ciudadanos: Partial<Ciudadano>[] }>[] }>[] }>, liderIndex: number): void {
     if (!lider || typeof lider !== 'object') {
       throw new ValidationError(`Leader at index ${liderIndex} is not a valid object`)
     }
 
     // Required fields validation
     const requiredFields = ['id', 'nombre', 'created_at']
-    const missingFields = requiredFields.filter(field => !lider[field])
+    const missingFields = requiredFields.filter(field => !lider[field as keyof Lider])
     
     if (missingFields.length > 0) {
       throw new ValidationError(
@@ -344,7 +344,7 @@ export class DataService {
   /**
    * Validates brigadistas hierarchy for a leader
    */
-  private static validateBrigadistasHierarchy(lider: any, liderIndex: number): void {
+  private static validateBrigadistasHierarchy(lider: Partial<Lider & { brigadistas: Partial<Brigadista & { movilizadores: Partial<Movilizador & { ciudadanos: Partial<Ciudadano>[] }>[] }>[] }>): void {
     // Brigadistas array validation
     if (lider.brigadistas !== null && lider.brigadistas !== undefined) {
       if (!Array.isArray(lider.brigadistas)) {
@@ -355,8 +355,8 @@ export class DataService {
       }
 
       lider.brigadistas.forEach((brigadista: any, brigIndex: number) => {
-        this.validateBrigadistaStructure(brigadista, lider.id, brigIndex)
-        this.validateMovilizadoresHierarchy(brigadista, lider.id, brigIndex)
+        this.validateBrigadistaStructure(brigadista, lider.id!, brigIndex)
+        this.validateMovilizadoresHierarchy(brigadista)
       })
     }
   }
@@ -364,13 +364,13 @@ export class DataService {
   /**
    * Validates individual brigadista structure
    */
-  private static validateBrigadistaStructure(brigadista: any, liderId: string, brigIndex: number): void {
+  private static validateBrigadistaStructure(brigadista: Partial<Brigadista & { movilizadores: Partial<Movilizador & { ciudadanos: Partial<Ciudadano>[] }>[] }>, liderId: string, brigIndex: number): void {
     if (!brigadista || typeof brigadista !== 'object') {
       throw new ValidationError(`Brigadista at index ${brigIndex} for leader ${liderId} is not a valid object`)
     }
 
-    const requiredFields = ['id', 'nombre', 'lider_id', 'created_at']
-    const missingFields = requiredFields.filter(field => !brigadista[field])
+    const requiredFields = ['id', 'nombre', 'lider_id', 'created_at'] as const
+    const missingFields = requiredFields.filter(field => !brigadista[field as keyof typeof brigadista])
     
     if (missingFields.length > 0) {
       throw new ValidationError(
@@ -394,7 +394,7 @@ export class DataService {
   /**
    * Validates movilizadores hierarchy for a brigadista
    */
-  private static validateMovilizadoresHierarchy(brigadista: any, liderId: string, brigIndex: number): void {
+  private static validateMovilizadoresHierarchy(brigadista: Partial<Brigadista & { movilizadores: Partial<Movilizador & { ciudadanos: Partial<Ciudadano>[] }>[] }>): void {
     if (brigadista.movilizadores !== null && brigadista.movilizadores !== undefined) {
       if (!Array.isArray(brigadista.movilizadores)) {
         throw new ValidationError(
@@ -404,8 +404,8 @@ export class DataService {
       }
 
       brigadista.movilizadores.forEach((movilizador: any, movIndex: number) => {
-        this.validateMovilizadorStructure(movilizador, brigadista.id, movIndex)
-        this.validateCiudadanosHierarchy(movilizador, brigadista.id, movIndex)
+        this.validateMovilizadorStructure(movilizador, brigadista.id!, movIndex)
+        this.validateCiudadanosHierarchy(movilizador)
       })
     }
   }
@@ -413,13 +413,13 @@ export class DataService {
   /**
    * Validates individual movilizador structure
    */
-  private static validateMovilizadorStructure(movilizador: any, brigadistaId: string, movIndex: number): void {
+  private static validateMovilizadorStructure(movilizador: Partial<Movilizador & { ciudadanos: Partial<Ciudadano>[] }>, brigadistaId: string, movIndex: number): void {
     if (!movilizador || typeof movilizador !== 'object') {
       throw new ValidationError(`Movilizador at index ${movIndex} for brigadista ${brigadistaId} is not a valid object`)
     }
 
-    const requiredFields = ['id', 'nombre', 'brigadista_id', 'created_at']
-    const missingFields = requiredFields.filter(field => !movilizador[field])
+    const requiredFields = ['id', 'nombre', 'brigadista_id', 'created_at'] as const
+    const missingFields = requiredFields.filter(field => !movilizador[field as keyof typeof movilizador])
     
     if (missingFields.length > 0) {
       throw new ValidationError(
@@ -443,7 +443,7 @@ export class DataService {
   /**
    * Validates ciudadanos hierarchy for a movilizador
    */
-  private static validateCiudadanosHierarchy(movilizador: any, brigadistaId: string, movIndex: number): void {
+  private static validateCiudadanosHierarchy(movilizador: Partial<Movilizador & { ciudadanos: Partial<Ciudadano>[] }>): void {
     if (movilizador.ciudadanos !== null && movilizador.ciudadanos !== undefined) {
       if (!Array.isArray(movilizador.ciudadanos)) {
         throw new ValidationError(
@@ -453,7 +453,7 @@ export class DataService {
       }
 
       movilizador.ciudadanos.forEach((ciudadano: any, citIndex: number) => {
-        this.validateCiudadanoStructure(ciudadano, movilizador.id, citIndex)
+        this.validateCiudadanoStructure(ciudadano, movilizador.id!, citIndex)
       })
     }
   }
@@ -466,8 +466,8 @@ export class DataService {
       throw new ValidationError(`Ciudadano at index ${citIndex} for movilizador ${movilizadorId} is not a valid object`)
     }
 
-    const requiredFields = ['id', 'nombre', 'movilizador_id', 'created_at']
-    const missingFields = requiredFields.filter(field => !ciudadano[field])
+    const requiredFields = ['id', 'nombre', 'movilizador_id', 'created_at'] as const
+    const missingFields = requiredFields.filter(field => !ciudadano[field as keyof typeof ciudadano])
     
     if (missingFields.length > 0) {
       throw new ValidationError(
@@ -1458,7 +1458,7 @@ export class DataService {
       .order('nombre', { ascending: true });
 
     if (error) {
-      throw new DatabaseError('Failed to fetch leaders list', error.code, error.details, error.hint);
+      throw new DatabaseError('Failed to fetch leaders list', error.code, error.details ? { message: error.details } : undefined, error.hint);
     }
     return data || [];
   }
@@ -1470,7 +1470,7 @@ export class DataService {
       .order('nombre', { ascending: true });
 
     if (error) {
-      throw new DatabaseError('Failed to fetch brigadistas list', error.code, error.details, error.hint);
+      throw new DatabaseError('Failed to fetch brigadistas list', error.code, error.details ? { message: error.details } : undefined, error.hint);
     }
     return data || [];
   }
@@ -1486,7 +1486,12 @@ export class DataService {
         const { error } = await supabase.rpc(rpcName, params);
 
         if (error) {
-          throw new DatabaseError(`Failed to execute ${rpcName} RPC`, error.code, error.details, error.hint);
+          // Convert string details to Record<string, unknown> format expected by DatabaseError
+          const errorDetails: Record<string, unknown> = error.details
+            ? { message: error.details }
+            : { message: 'Unknown database error' };
+
+          throw new DatabaseError(`Failed to execute ${rpcName} RPC`, error.code, errorDetails, error.hint);
         }
 
         await this.invalidateDataCache();
@@ -2126,6 +2131,7 @@ export class DataService {
 
     regionGroups.forEach((people, region) => {
       const totalWorkers = people.filter(p => p.role !== 'ciudadano').length
+      const totalCitizens = people.filter(p => p.role === 'ciudadano').length
       const totalPopulation = people.length
 
       // Assuming an arbitrary area for density calculation
@@ -2139,10 +2145,12 @@ export class DataService {
 
       workerDensityMetrics.push({
         region,
+        regionType: 'entidad',
         workerDensity: density,
-        densityLevel,
-        totalWorkers,
-        areaSqKm
+        citizenDensity: totalCitizens > 0 ? totalCitizens / areaSqKm : 0,
+        densityRank: 0, // Will be calculated after sorting
+        isOptimal: densityLevel === 'high',
+        recommendation: densityLevel === 'low' ? 'Consider adding more workers to this region' : 'Optimal density achieved'
       })
     })
 
@@ -2159,15 +2167,19 @@ export class DataService {
 
         gapMetrics.push({
           region: metric.region,
-          gapSize: potentialCitizens,
-          requiredWorkers,
-          priority: metric.status === 'critical' ? 'high' : 'medium',
-          recommendation: `Asignar ${requiredWorkers} movilizadores a ${metric.region}`
+          regionType: metric.regionType,
+          gapType: 'low_coverage',
+          severity: metric.status === 'critical' ? 'critical' : 'medium',
+          description: `Region ${metric.region} needs improvement with ${potentialCitizens} potential additional citizens`,
+          recommendedAction: `Assign ${requiredWorkers} movilizadores to ${metric.region}`,
+          priority: metric.status === 'critical' ? 10 : 5,
+          estimatedImpact: potentialCitizens,
+          nearbyRegions: [] // Would need geographic proximity calculation
         })
       }
     })
 
-    return gapMetrics.sort((a, b) => b.gapSize - a.gapSize)
+    return gapMetrics.sort((a, b) => b.estimatedImpact - a.estimatedImpact)
   }
 
   private static generateCitizenWorkerRatioMetrics(allPeople: Person[]): CitizenWorkerRatioMetric[] {
@@ -2185,28 +2197,45 @@ export class DataService {
     else ratioHealth = 'critical'
 
     ratioMetrics.push({
-      ratio,
-      totalCitizens: citizens.length,
+      region: 'national',
+      regionType: 'entidad',
       totalWorkers: workers.length,
-      health: ratioHealth,
-      recommendation: ratioHealth !== 'healthy' ? 'Ajustar el número de movilizadores para optimizar la cobertura' : 'Ratio saludable'
+      totalCitizens: citizens.length,
+      ratio,
+      optimalRatio: 15,
+      efficiency: ratioHealth === 'healthy' ? 'high' : ratioHealth === 'unbalanced' ? 'medium' : 'low',
+      trend: 'stable',
+      benchmarkComparison: 100
     })
 
     return ratioMetrics
   }
 
   private static generateTerritorialSummary(coverageMetrics: TerritorialCoverageMetric[], gapAnalysis: TerritorialGapMetric[], citizenWorkerRatio: CitizenWorkerRatioMetric[]): TerritorialSummary {
-    const strongestRegion = coverageMetrics[0]
-    const weakestRegion = coverageMetrics[coverageMetrics.length - 1]
-    const largestGap = gapAnalysis[0]
+
+
+    const topPerformingRegions = coverageMetrics.slice(0, 3).map(region => ({
+      region: region.region,
+      coveragePercentage: region.coveragePercentage,
+      citizenWorkerRatio: region.totalCitizens / Math.max(1, region.totalWorkers)
+    }))
+
+    const expansionOpportunities = gapAnalysis.slice(0, 3).map(gap => ({
+      region: gap.region,
+      potentialCitizens: gap.estimatedImpact,
+      requiredWorkers: Math.ceil(gap.estimatedImpact / 10),
+      priority: gap.severity === 'critical' ? 'high' as const : 'medium' as const
+    }))
 
     return {
-      totalRegions: coverageMetrics.length,
-      strongestRegion: strongestRegion ? { name: strongestRegion.region, coverage: strongestRegion.coveragePercentage } : undefined,
-      weakestRegion: weakestRegion ? { name: weakestRegion.region, coverage: weakestRegion.coveragePercentage } : undefined,
-      largestGap: largestGap ? { name: largestGap.region, gap: largestGap.gapSize } : undefined,
-      overallCoverage: coverageMetrics.reduce((sum, metric) => sum + metric.coveragePercentage, 0) / (coverageMetrics.length || 1),
-      mainRecommendation: largestGap ? largestGap.recommendation : 'Mantener la estrategia actual'
+      totalRegionsAnalyzed: coverageMetrics.length,
+      regionsWithExcellentCoverage: coverageMetrics.filter(m => m.status === 'excellent').length,
+      regionsNeedingImprovement: coverageMetrics.filter(m => m.status === 'needs_improvement' || m.status === 'critical').length,
+      criticalGaps: coverageMetrics.filter(m => m.status === 'critical').length,
+      averageCoveragePercentage: coverageMetrics.reduce((sum, metric) => sum + metric.coveragePercentage, 0) / (coverageMetrics.length || 1),
+      topPerformingRegions,
+      expansionOpportunities,
+      overallHealthScore: Math.min(100, (coverageMetrics.filter(m => m.status === 'excellent').length / coverageMetrics.length) * 100)
     }
   }
 
@@ -2217,9 +2246,14 @@ export class DataService {
       gapAnalysis: [],
       citizenWorkerRatio: [],
       summary: {
-        totalRegions: 0,
-        overallCoverage: 0,
-        mainRecommendation: ''
+        totalRegionsAnalyzed: 0,
+        regionsWithExcellentCoverage: 0,
+        regionsNeedingImprovement: 0,
+        criticalGaps: 0,
+        averageCoveragePercentage: 0,
+        topPerformingRegions: [],
+        expansionOpportunities: [],
+        overallHealthScore: 0
       }
     }
   }

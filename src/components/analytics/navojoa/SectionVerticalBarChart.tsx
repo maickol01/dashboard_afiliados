@@ -112,8 +112,8 @@ const SectionVerticalBarChart: React.FC<SectionStackedBarChartProps> = ({
       });
 
     // Apply filters and sorting
-    let filtered = applyDensityFilter(processed, densityFilter);
-    let sorted = applySorting(filtered, sortOption);
+    const filtered = applyDensityFilter(processed, densityFilter);
+    const sorted = applySorting(filtered, sortOption);
     
     // Limit for better visualization
     const limited = sorted.slice(0, isMobile ? 10 : 20);
