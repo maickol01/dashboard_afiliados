@@ -1475,27 +1475,69 @@ export class DataService {
     return data || [];
   }
 
+  static async deletePerson(personId: string, role: string, action: DeletionAction, newParentId?: string): Promise<void> {
+    return this.circuitBreaker.execute(async () => {
+      return withDatabaseRetry(async () => {
+        const { error } = await supabase.rpc('delete_person_and_handle_children', {
+          p_person_id: personId,
+          p_role: role,
+          p_action: action,
+          p_new_parent_id: newParentId
+        });
+
+        if (error) {
+          const fullErrorMessage = `RPC Error: ${error.message} (Code: ${error.code}) - Details: ${error.details} - Hint: ${error.hint}`;
+          console.error('Supabase RPC error details:', error);
+          throw new DatabaseError(`Failed to delete person ${personId}. Reason: ${fullErrorMessage}`, error.code, { message: error.details }, error.hint);
+        }
+
+        await this.invalidateDataCache();
+        console.log(`Successfully deleted person ${personId}`);
+      });
+    });
+  }
+
+  static async updatePerson(personId: string, role: string, newData: Partial<Person>): Promise<void> {
+    return this.circuitBreaker.execute(async () => {
+      return withDatabaseRetry(async () => {
+        const { error } = await supabase.rpc('update_person_details', {
+          person_id: personId,
+          person_role: role,
+          new_data: newData
+        });
+
+        if (error) {
+          const errorDetails: Record<string, unknown> = error.details
+            ? { message: error.details }
+            : { message: 'Unknown database error' };
+
+          throw new DatabaseError('Failed to execute update_person_details RPC', error.code, errorDetails, error.hint);
+        }
+
+        await this.invalidateDataCache();
+        console.log(`Update successful for ${role} ${personId}`);
+      });
+    });
+  }
+
   static async reassignPerson(personId: string, newParentId: string, role: 'brigadista' | 'movilizador'): Promise<void> {
     return this.circuitBreaker.execute(async () => {
       return withDatabaseRetry(async () => {
         const rpcName = role === 'brigadista' ? 'reasignar_brigadista' : 'reasignar_movilizador';
-        const params = role === 'brigadista' 
+        const params = role === 'brigadista'
           ? { brigadista_id_in: personId, nuevo_lider_id_in: newParentId }
           : { movilizador_id_in: personId, nuevo_brigadista_id_in: newParentId };
 
         const { error } = await supabase.rpc(rpcName, params);
 
         if (error) {
-          // Convert string details to Record<string, unknown> format expected by DatabaseError
-          const errorDetails: Record<string, unknown> = error.details
-            ? { message: error.details }
-            : { message: 'Unknown database error' };
-
-          throw new DatabaseError(`Failed to execute ${rpcName} RPC`, error.code, errorDetails, error.hint);
+          const fullErrorMessage = `RPC Error: ${error.message} (Code: ${error.code}) - Details: ${error.details} - Hint: ${error.hint}`;
+          console.error('Supabase RPC error details:', error);
+          throw new DatabaseError(`Failed to reassign ${role} ${personId}. Reason: ${fullErrorMessage}`, error.code, { message: error.details }, error.hint);
         }
 
         await this.invalidateDataCache();
-        console.log(`Reassignment successful for ${role} ${personId}`);
+        console.log(`Successfully reassigned ${role} ${personId} to ${newParentId}`);
       });
     });
   }

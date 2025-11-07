@@ -8,6 +8,7 @@ import { DataErrorBoundary } from './components/common/DataErrorBoundary';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('analytics');
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -18,7 +19,7 @@ function App() {
       case 'quality':
         return <DataQualityPage />;
       case 'hierarchy':
-        return <HierarchyPage />;
+        return <HierarchyPage isPanelOpen={isPanelOpen} setIsPanelOpen={setIsPanelOpen} />;
       default:
         return <ConsolidatedAnalyticsPage />;
     }
@@ -26,7 +27,7 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <Layout currentPage={currentPage} onPageChange={setCurrentPage}>
+      <Layout currentPage={currentPage} onPageChange={setCurrentPage} isModalOpen={isPanelOpen}>
         <DataErrorBoundary>
           {renderPage()}
         </DataErrorBoundary>

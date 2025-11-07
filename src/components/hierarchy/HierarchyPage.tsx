@@ -4,14 +4,21 @@ import HierarchyTable from '../tables/HierarchyTable';
 import { exportToPDF } from '../../utils/export';
 import DateFilter, { DateRange } from '../shared/DateFilter';
 import DetailsPanel from '../shared/DetailsPanel';
+import Notification, { NotificationType } from '../common/Notification';
 import { Person } from '../../types';
 import { DataService } from '../../services/dataService';
+import { DeletionAction } from '../shared/DeleteConfirmationModal';
 
-const HierarchyPage: React.FC = () => {
+interface HierarchyPageProps {
+  isPanelOpen: boolean;
+  setIsPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const HierarchyPage: React.FC<HierarchyPageProps> = ({ isPanelOpen, setIsPanelOpen }) => {
   const [dateRange, setDateRange] = useState<DateRange | null>(null);
   const { data, loading, error, refetchData } = useData(dateRange);
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
+  const [notification, setNotification] = useState<{ message: string; type: NotificationType } | null>(null);
 
   const [lideres, setLideres] = useState<{ id: string; nombre: string }[]>([]);
   const [brigadistas, setBrigadistas] = useState<{ id: string; nombre: string }[]>([]);
@@ -27,7 +34,7 @@ const HierarchyPage: React.FC = () => {
         setBrigadistas(brigadistasList);
       } catch (error) {
         console.error("Error fetching parent lists:", error);
-        // Optionally set an error state here to show in the UI
+        setNotification({ message: 'Error al cargar listas de líderes y brigadistas.', type: 'error' });
       }
     };
     fetchLists();
@@ -55,11 +62,38 @@ const HierarchyPage: React.FC = () => {
     try {
       await DataService.reassignPerson(personId, newParentId, role);
       handlePanelClose();
-      refetchData(); // Refetch all data to reflect the change in the hierarchy
+      refetchData();
+      setNotification({ message: 'Reasignación exitosa.', type: 'success' });
     } catch (error) {
       console.error("Failed to reassign person:", error);
-      // This will now show the detailed message from the database function
-      alert(`Error al reasignar: ${error instanceof Error ? error.message : String(error)}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setNotification({ message: `Error al reasignar: ${errorMessage}`, type: 'error' });
+    }
+  };
+
+  const handleUpdatePerson = async (personId: string, role: string, updatedData: Partial<Person>) => {
+    try {
+      await DataService.updatePerson(personId, role, updatedData);
+      handlePanelClose();
+      refetchData();
+      setNotification({ message: 'Registro actualizado exitosamente.', type: 'success' });
+    } catch (error) {
+      console.error("Failed to update person:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setNotification({ message: `Error al actualizar: ${errorMessage}`, type: 'error' });
+    }
+  };
+
+  const handleDeletePerson = async (personId: string, role: string, action: DeletionAction, newParentId?: string) => {
+    try {
+      await DataService.deletePerson(personId, role, action, newParentId);
+      handlePanelClose();
+      refetchData();
+      setNotification({ message: 'Eliminación completada exitosamente.', type: 'success' });
+    } catch (error) {
+      console.error("Failed to delete person:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setNotification({ message: `Error al eliminar: ${errorMessage}`, type: 'error' });
     }
   };
 
@@ -86,7 +120,7 @@ const HierarchyPage: React.FC = () => {
           <h3 className="text-lg font-medium text-gray-900 mb-2">Error al cargar datos</h3>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
-            onClick={refetchData}
+            onClick={() => refetchData()}
             className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-light"
           >
             Reintentar
@@ -98,6 +132,13 @@ const HierarchyPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {notification && (
+        <Notification 
+          message={notification.message} 
+          type={notification.type} 
+          onClose={() => setNotification(null)} 
+        />
+      )}
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h2 className="text-xl font-semibold text-gray-900 mb-2">
           Estructura Jerárquica
@@ -121,6 +162,8 @@ const HierarchyPage: React.FC = () => {
         lideres={lideres}
         brigadistas={brigadistas}
         onReassign={handleReassign}
+        onUpdate={handleUpdatePerson}
+        onDelete={handleDeletePerson}
         hierarchicalData={data}
       />
     </div>
