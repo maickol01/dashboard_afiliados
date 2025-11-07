@@ -202,40 +202,7 @@ const GeographicAnalysisPage: React.FC = () => {
       <SectionHeatMap 
         sectionData={navojoaData?.sectionData || []}
         colorScale="green"
-        loading={loading}
-      />
-
-      {/* Data Quality Indicator */}
-      {navojoaData && !loading && (
-        <div className={`bg-blue-50 border border-blue-200 rounded-lg ${isMobile ? 'p-3' : 'p-4'}`}>
-          <div className="flex items-start gap-3">
-            <div className={`text-blue-600 mt-0.5 flex-shrink-0 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-              ℹ️
-            </div>
-            <div>
-              <h4 className={`font-medium text-blue-800 mb-1 ${isMobile ? 'text-sm' : ''}`}>
-                Información del Análisis
-              </h4>
-              <div className={`text-blue-700 space-y-1 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                <p>
-                  • <strong>{navojoaData.sectionData.length}</strong> secciones con datos de {navojoaData.kpis.totalRegistrations.toLocaleString()} registros totales
-                </p>
-                <p>
-                  • Cobertura territorial: <strong>{navojoaData.kpis.coveragePercentage.toFixed(1)}%</strong> de las 78 secciones de Navojoa
-                </p>
-                <p>
-                  • Promedio de <strong>{navojoaData.kpis.averageRegistrationsPerSection.toFixed(1)}</strong> registros por sección activa
-                </p>
-                {!isMobile && (
-                  <p className="text-blue-600 mt-2">
-                    Los datos se actualizan automáticamente cuando cambia la información jerárquica.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+        loading={loading}      />
     </div>
   );
 };
