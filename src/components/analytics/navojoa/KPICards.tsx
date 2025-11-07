@@ -101,46 +101,6 @@ const KPICards: React.FC<KPICardsProps> = ({
     }
   ];
 
-  // Role breakdown cards data
-  const roleKPIs = [
-    {
-      id: 'lideres',
-      title: 'Líderes',
-      value: kpis.roleBreakdown.lideres.toLocaleString(),
-      icon: Crown,
-      color: 'bg-purple-600',
-      textColor: 'text-purple-600',
-      description: 'Total de líderes registrados'
-    },
-    {
-      id: 'brigadistas',
-      title: 'Brigadistas',
-      value: kpis.roleBreakdown.brigadistas.toLocaleString(),
-      icon: Shield,
-      color: 'bg-indigo-600',
-      textColor: 'text-indigo-600',
-      description: 'Total de brigadistas registrados'
-    },
-    {
-      id: 'movilizadores',
-      title: 'Movilizadores',
-      value: kpis.roleBreakdown.movilizadores.toLocaleString(),
-      icon: Zap,
-      color: 'bg-orange-600',
-      textColor: 'text-orange-600',
-      description: 'Total de movilizadores registrados'
-    },
-    {
-      id: 'ciudadanos',
-      title: 'Ciudadanos',
-      value: kpis.roleBreakdown.ciudadanos.toLocaleString(),
-      icon: User,
-      color: 'bg-teal-600',
-      textColor: 'text-teal-600',
-      description: 'Total de ciudadanos registrados'
-    }
-  ];
-
   return (
     <div className="space-y-6">
       {/* Coverage Highlight Card */}
@@ -148,7 +108,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         <div className={`flex items-center ${isMobile ? 'flex-col text-center' : 'justify-between'}`}>
           <div className={isMobile ? 'mb-4' : ''}>
             <h2 className={`font-bold mb-2 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-              {kpis.totalSectionsWithCoverage} de 78 secciones - {kpis.coveragePercentage.toFixed(1)}%
+              {kpis.totalSectionsWithCoverage} secciones cubiertas
             </h2>
             <p className={`text-primary-white ${isMobile ? 'text-sm' : ''}`}>Cobertura Electoral de Navojoa</p>
             {kpis.trends?.sectionsChange && (
@@ -190,65 +150,6 @@ const KPICards: React.FC<KPICardsProps> = ({
         ))}
       </div>
 
-      {/* Role Breakdown Section */}
-      <div className={`bg-white rounded-lg shadow-md ${isMobile ? 'p-4' : 'p-6'}`}>
-        <h3 className={`font-semibold text-gray-900 mb-6 flex items-center ${isMobile ? 'text-base' : 'text-lg'}`}>
-          <UserCheck className={`text-primary mr-2 ${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
-          Desglose por Roles Organizacionales
-        </h3>
-        <div className={`grid gap-4 ${isMobile ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-4'}`}>
-          {roleKPIs.map((role) => (
-            <div key={role.id} className={`text-center bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors ${isMobile ? 'p-3' : 'p-4'}`}>
-              <div className={`inline-flex rounded-full ${role.color} mb-3 ${isMobile ? 'p-2' : 'p-3'}`}>
-                <role.icon className={`text-white ${isMobile ? 'h-5 w-5' : 'h-6 w-6'}`} />
-              </div>
-              <div className={`font-bold ${role.textColor} mb-1 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
-                {role.value}
-              </div>
-              <div className={`font-medium text-gray-700 mb-1 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                {role.title}
-              </div>
-              <div className={`text-gray-500 ${isMobile ? 'text-xs' : 'text-xs'}`}>
-                {isMobile ? role.title : role.description}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Summary Stats */}
-      <div className={`bg-white rounded-lg shadow-md ${isMobile ? 'p-4' : 'p-6'}`}>
-        <h3 className={`font-semibold text-gray-900 mb-4 ${isMobile ? 'text-base' : 'text-lg'}`}>Resumen Estadístico</h3>
-        <div className={`grid gap-6 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'}`}>
-          <div className="text-center">
-            <div className={`font-bold text-primary mb-2 ${isMobile ? 'text-2xl' : 'text-3xl'}`}>
-              {((kpis.totalSectionsWithCoverage / kpis.TOTAL_SECTIONS_NAVOJOA) * 100).toFixed(1)}%
-            </div>
-            <div className={`text-gray-600 ${isMobile ? 'text-xs' : 'text-sm'}`}>Cobertura Territorial</div>
-            <div className={`text-gray-500 mt-1 ${isMobile ? 'text-xs' : 'text-xs'}`}>
-              {kpis.TOTAL_SECTIONS_NAVOJOA - kpis.totalSectionsWithCoverage} secciones sin cobertura
-            </div>
-          </div>
-          <div className="text-center">
-            <div className={`font-bold text-green-600 mb-2 ${isMobile ? 'text-2xl' : 'text-3xl'}`}>
-              {kpis.averageRegistrationsPerSection.toFixed(1)}
-            </div>
-            <div className={`text-gray-600 ${isMobile ? 'text-xs' : 'text-sm'}`}>Registros por Sección</div>
-            <div className={`text-gray-500 mt-1 ${isMobile ? 'text-xs' : 'text-xs'}`}>
-              Promedio en secciones activas
-            </div>
-          </div>
-          <div className="text-center">
-            <div className={`font-bold text-blue-600 mb-2 ${isMobile ? 'text-2xl' : 'text-3xl'}`}>
-              {kpis.totalRegistrations.toLocaleString()}
-            </div>
-            <div className={`text-gray-600 ${isMobile ? 'text-xs' : 'text-sm'}`}>Total Registrados</div>
-            <div className={`text-gray-500 mt-1 ${isMobile ? 'text-xs' : 'text-xs'}`}>
-              En {kpis.totalSectionsWithCoverage} secciones
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
