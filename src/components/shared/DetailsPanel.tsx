@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, ChevronsUpDown, Users, Edit, Save, Ban } from 'lucide-react';
 import { Person } from '../../types';
-import DeleteConfirmationModal, { DeletionAction } from './DeleteConfirmationModal';
 
 interface DetailsPanelProps {
   person: Person | null;
@@ -11,21 +10,19 @@ interface DetailsPanelProps {
   brigadistas: { id: string; nombre: string }[];
   onReassign: (personId: string, newParentId: string, role: 'brigadista' | 'movilizador') => void;
   onUpdate: (personId: string, role: string, updatedData: Partial<Person>) => void;
-  onDelete: (personId: string, role: string, action: DeletionAction, newParentId?: string) => void;
   hierarchicalData: Person[];
 }
 
-const DetailsPanel: React.FC<DetailsPanelProps> = ({ person, isOpen, onClose, lideres, brigadistas, onReassign, onUpdate, onDelete, hierarchicalData }) => {
+const DetailsPanel: React.FC<DetailsPanelProps> = ({ person, isOpen, onClose, lideres, brigadistas, onReassign, onUpdate, hierarchicalData }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editablePerson, setEditablePerson] = useState<Person | null>(person);
   const [newParentId, setNewParentId] = useState('');
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   useEffect(() => {
     if (person) {
       setEditablePerson(person);
       setNewParentId('');
-      setIsEditing(false);
+      setIsEditing(false); // Reset to view mode when person changes
     }
   }, [person]);
 
@@ -58,15 +55,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ person, isOpen, onClose, li
     return {};
   };
 
-  const getDescendantCount = (person: Person | null): number => {
-    if (!person || !person.children) return 0;
-    let count = person.children.length;
-    person.children.forEach(child => {
-      count += getDescendantCount(child);
-    });
-    return count;
-  };
-
   const parentNames = findParents(person, hierarchicalData);
 
   const getRoleName = (role: string) => {
@@ -92,18 +80,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ person, isOpen, onClose, li
     setIsEditing(false);
   };
 
-  const handleDeleteClick = () => {
-    setIsDeleteModalOpen(true);
-  };
-
-  const handleConfirmDelete = (action: DeletionAction, newParentId?: string) => {
-    if (person) {
-      onDelete(person.id, person.role, action, newParentId);
-    }
-    setIsDeleteModalOpen(false);
-    onClose();
-  };
-
   const detailItems = [
     { label: 'ID', value: person?.id, name: 'id', editable: false },
     { label: 'Rol', value: getRoleName(person?.role || ''), name: 'role', editable: false },
@@ -121,10 +97,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ person, isOpen, onClose, li
   ];
 
   const canBeReassigned = person?.role === 'brigadista' || person?.role === 'movilizador';
-  const parentListForReassignment = person?.role === 'brigadista' ? lideres : brigadistas;
+  const parentList = person?.role === 'brigadista' ? lideres : brigadistas;
   const currentParentId = person?.role === 'brigadista' ? person.lider_id : person?.brigadista_id;
-
-  const parentListForDeletion = person ? (person.role === 'lider' ? lideres.filter(l => l.id !== person.id) : brigadistas.filter(b => b.id !== person.id)) : [];
 
   const handleConfirmReassignment = () => {
     if (!person || !newParentId || newParentId === currentParentId) {
@@ -135,17 +109,15 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ person, isOpen, onClose, li
   };
 
   return (
-    <>
-      <div className={`fixed inset-0 z-40 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-        {/* Backdrop */}
-        <div 
-          className="absolute inset-0 bg-black opacity-50"
-          onClick={onClose}
-        ></div>
-      </div>
+    <div className={`fixed inset-0 z-50 ${isOpen ? '' : 'pointer-events-none'}`}>
+      {/* Backdrop */}
+      <div 
+        className={`absolute inset-0 bg-black transition-opacity duration-300 ${isOpen ? 'opacity-50' : 'opacity-0'}`}
+        onClick={onClose}
+      ></div>
 
       {/* Panel */}
-      <div className={`fixed top-0 right-0 h-full bg-white w-full max-w-md shadow-xl transform transition-transform duration-300 ease-in-out z-50 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`fixed top-0 right-0 h-full bg-white w-full max-w-md shadow-xl transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         {person && (
           <div className="flex flex-col h-full">
             {/* Header */}
@@ -235,7 +207,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ person, isOpen, onClose, li
                           className="w-full pl-3 pr-10 py-2 text-left bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
                         >
                           <option value="" disabled>Selecciona una opción...</option>
-                          {parentListForReassignment.filter(p => p.id !== currentParentId).map(parent => (
+                          {parentList.filter(p => p.id !== currentParentId).map(parent => (
                             <option key={parent.id} value={parent.id}>{parent.nombre}</option>
                           ))}
                         </select>
@@ -286,7 +258,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ person, isOpen, onClose, li
                       Editar
                     </button>
                     <button 
-                      onClick={handleDeleteClick}
+                      onClick={() => console.log('Delete:', person.id)}
                       className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
                     >
                       Eliminar
@@ -298,15 +270,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ person, isOpen, onClose, li
           </div>
         )}
       </div>
-      <DeleteConfirmationModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleConfirmDelete}
-        person={person}
-        descendantCount={getDescendantCount(person)}
-        parentList={parentListForDeletion}
-      />
-    </>
+    </div>
   );
 };
 

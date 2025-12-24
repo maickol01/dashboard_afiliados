@@ -7,16 +7,11 @@ import DetailsPanel from '../shared/DetailsPanel';
 import Notification, { NotificationType } from '../common/Notification';
 import { Person } from '../../types';
 import { DataService } from '../../services/dataService';
-import { DeletionAction } from '../shared/DeleteConfirmationModal';
 
-interface HierarchyPageProps {
-  isPanelOpen: boolean;
-  setIsPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
-}
-
-const HierarchyPage: React.FC<HierarchyPageProps> = ({ isPanelOpen, setIsPanelOpen }) => {
+const HierarchyPage: React.FC = () => {
   const [dateRange, setDateRange] = useState<DateRange | null>(null);
   const { data, loading, error, refetchData } = useData(dateRange);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: NotificationType } | null>(null);
 
@@ -81,19 +76,6 @@ const HierarchyPage: React.FC<HierarchyPageProps> = ({ isPanelOpen, setIsPanelOp
       console.error("Failed to update person:", error);
       const errorMessage = error instanceof Error ? error.message : String(error);
       setNotification({ message: `Error al actualizar: ${errorMessage}`, type: 'error' });
-    }
-  };
-
-  const handleDeletePerson = async (personId: string, role: string, action: DeletionAction, newParentId?: string) => {
-    try {
-      await DataService.deletePerson(personId, role, action, newParentId);
-      handlePanelClose();
-      refetchData();
-      setNotification({ message: 'Eliminación completada exitosamente.', type: 'success' });
-    } catch (error) {
-      console.error("Failed to delete person:", error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      setNotification({ message: `Error al eliminar: ${errorMessage}`, type: 'error' });
     }
   };
 
@@ -163,7 +145,6 @@ const HierarchyPage: React.FC<HierarchyPageProps> = ({ isPanelOpen, setIsPanelOp
         brigadistas={brigadistas}
         onReassign={handleReassign}
         onUpdate={handleUpdatePerson}
-        onDelete={handleDeletePerson}
         hierarchicalData={data}
       />
     </div>

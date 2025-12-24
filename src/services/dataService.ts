@@ -118,20 +118,20 @@ export class DataService {
     const filteredList: Person[] = [];
 
     for (const person of people) {
-        const personDate = new Date(person.created_at);
-        const isPersonInDateRange = personDate >= startDate && personDate <= endDate;
+      const personDate = new Date(person.created_at);
+      const isPersonInDateRange = personDate >= startDate && personDate <= endDate;
 
-        let filteredChildren: Person[] = [];
-        if (person.children && person.children.length > 0) {
-            filteredChildren = this.filterHierarchyByDate(person.children, startDate, endDate); // Recursive call
-        }
+      let filteredChildren: Person[] = [];
+      if (person.children && person.children.length > 0) {
+        filteredChildren = this.filterHierarchyByDate(person.children, startDate, endDate); // Recursive call
+      }
 
-        // A person is included if they are in the date range OR if any of their children are included
-        if (isPersonInDateRange || filteredChildren.length > 0) {
-            const newPerson = { ...person };
-            newPerson.children = filteredChildren; // Keep filtered children
-            filteredList.push(newPerson);
-        }
+      // A person is included if they are in the date range OR if any of their children are included
+      if (isPersonInDateRange || filteredChildren.length > 0) {
+        const newPerson = { ...person };
+        newPerson.children = filteredChildren; // Keep filtered children
+        filteredList.push(newPerson);
+      }
     }
     return filteredList;
   }
@@ -234,7 +234,7 @@ export class DataService {
 
         // Calculate brigadista's registeredCount from all movilizadores
         const brigadistaRegisteredCount = movilizadores.reduce(
-          (sum: number, movilizador: Person) => sum + movilizador.registeredCount, 
+          (sum: number, movilizador: Person) => sum + movilizador.registeredCount,
           0
         )
 
@@ -250,7 +250,7 @@ export class DataService {
 
       // Calculate lider's registeredCount from all brigadistas
       const liderRegisteredCount = brigadistas.reduce(
-        (sum: number, brigadista: Person) => sum + brigadista.registeredCount, 
+        (sum: number, brigadista: Person) => sum + brigadista.registeredCount,
         0
       )
 
@@ -296,7 +296,7 @@ export class DataService {
       if (error instanceof ValidationError) {
         throw error
       }
-      
+
       // Wrap unexpected errors in DatabaseError for consistency
       throw new DatabaseError(
         'Failed to validate nested structure from Supabase',
@@ -318,7 +318,7 @@ export class DataService {
     // Required fields validation
     const requiredFields = ['id', 'nombre', 'created_at']
     const missingFields = requiredFields.filter(field => !lider[field as keyof Lider])
-    
+
     if (missingFields.length > 0) {
       throw new ValidationError(
         `Leader at index ${liderIndex} missing required fields: ${missingFields.join(', ')}`,
@@ -371,7 +371,7 @@ export class DataService {
 
     const requiredFields = ['id', 'nombre', 'lider_id', 'created_at'] as const
     const missingFields = requiredFields.filter(field => !brigadista[field as keyof typeof brigadista])
-    
+
     if (missingFields.length > 0) {
       throw new ValidationError(
         `Brigadista at index ${brigIndex} for leader ${liderId} missing required fields: ${missingFields.join(', ')}`,
@@ -420,7 +420,7 @@ export class DataService {
 
     const requiredFields = ['id', 'nombre', 'brigadista_id', 'created_at'] as const
     const missingFields = requiredFields.filter(field => !movilizador[field as keyof typeof movilizador])
-    
+
     if (missingFields.length > 0) {
       throw new ValidationError(
         `Movilizador at index ${movIndex} for brigadista ${brigadistaId} missing required fields: ${missingFields.join(', ')}`,
@@ -468,7 +468,7 @@ export class DataService {
 
     const requiredFields = ['id', 'nombre', 'movilizador_id', 'created_at'] as const
     const missingFields = requiredFields.filter(field => !ciudadano[field as keyof typeof ciudadano])
-    
+
     if (missingFields.length > 0) {
       throw new ValidationError(
         `Ciudadano at index ${citIndex} for movilizador ${movilizadorId} missing required fields: ${missingFields.join(', ')}`,
@@ -541,11 +541,11 @@ export class DataService {
     lideresData.forEach(lider => {
       if (lider.brigadistas) {
         totalBrigadistas += lider.brigadistas.length
-        
+
         lider.brigadistas.forEach((brigadista: any) => {
           if (brigadista.movilizadores) {
             totalMovilizadores += brigadista.movilizadores.length
-            
+
             brigadista.movilizadores.forEach((movilizador: any) => {
               if (movilizador.ciudadanos) {
                 totalCiudadanos += movilizador.ciudadanos.length
@@ -564,7 +564,7 @@ export class DataService {
    */
   private static isValidDate(date: any): boolean {
     if (!date) return false
-    
+
     const parsedDate = new Date(date)
     return !isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 1900
   }
@@ -614,13 +614,22 @@ export class DataService {
 
         // Análisis temporal optimizado
         const now = new Date()
-        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
-        // Parallel generation of time-based analytics
+        // Calculate the actual start date from the data
+        let minDate = new Date(now);
+        if (allPeople.length > 0) {
+          const dates = allPeople.map(p => new Date(p.created_at).getTime());
+          minDate = new Date(Math.min(...dates));
+        }
+
+        // Ensure we don't go into the future (sanity check)
+        if (minDate > now) minDate = new Date(now);
+
+        // Parallel generation of time-based analytics with dynamic ranges
         const [dailyRegistrations, weeklyRegistrations, monthlyRegistrations] = await Promise.all([
-          this.generateDailyRegistrations(allPeople, thirtyDaysAgo, now),
-          this.generateWeeklyRegistrations(allPeople),
-          this.generateMonthlyRegistrations(allPeople)
+          this.generateDailyRegistrations(peopleByRole.ciudadano, minDate, now),
+          this.generateWeeklyRegistrations(peopleByRole.ciudadano, minDate, now),
+          this.generateMonthlyRegistrations(peopleByRole.ciudadano, minDate, now)
         ])
 
         // Optimized leader performance calculation
@@ -720,7 +729,7 @@ export class DataService {
           temporal: {
             hourlyPatterns: this.calculateHourlyPatterns(allPeople),
             weeklyPatterns: this.calculateWeeklyPatterns(allPeople),
-            seasonality: this.calculateEnhancedSeasonality(allPeople, monthlyRegistrations),
+            seasonality: this.calculateEnhancedSeasonality(monthlyRegistrations),
             projections: this.generateEnhancedProjections(allPeople, now),
             peakActivity: this.calculatePeakActivityAnalysis(allPeople)
           },
@@ -729,7 +738,7 @@ export class DataService {
             dataCompleteness,
             duplicateRate: this.calculateDuplicateRate(allPeople),
             verificationRate: totalCitizens > 0 ? (verifiedCiudadanos / totalCitizens) * 100 : 0,
-            postRegistrationActivity: this.calculatePostRegistrationActivity(allPeople)
+            postRegistrationActivity: this.calculatePostRegistrationActivity()
           },
 
           goals: {
@@ -781,13 +790,13 @@ export class DataService {
           },
 
           predictions: {
-            churnRisk: this.calculateEnhancedChurnRisk(allPeople, peopleByRole),
-            resourceOptimization: this.calculateResourceOptimizationRecommendations(hierarchicalData, peopleByRole),
-            patterns: this.identifyElectoralPatterns(allPeople, hierarchicalData, regionCounts)
+            churnRisk: this.calculateEnhancedChurnRisk(allPeople),
+            resourceOptimization: this.calculateResourceOptimizationRecommendations(),
+            patterns: this.identifyElectoralPatterns()
           },
 
           // Territorial coverage analytics
-          territorial: this.generateTerritorialAnalytics(hierarchicalData, allPeople)
+          territorial: this.generateTerritorialAnalytics(allPeople)
         }
 
         // Cache the result with intelligent caching
@@ -846,16 +855,16 @@ export class DataService {
 
     // Group by local date string
     people.forEach(p => {
-        const localDate = new Date(p.created_at);
-        
-        // We only care about dates within the range
-        if (localDate >= startDate && localDate <= endDate) {
-            const year = localDate.getFullYear();
-            const month = localDate.getMonth();
-            const day = localDate.getDate();
-            const localDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            dateMap.set(localDateStr, (dateMap.get(localDateStr) || 0) + 1);
-        }
+      const localDate = new Date(p.created_at);
+
+      // We only care about dates within the range
+      if (localDate >= startDate && localDate <= endDate) {
+        const year = localDate.getFullYear();
+        const month = localDate.getMonth();
+        const day = localDate.getDate();
+        const localDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        dateMap.set(localDateStr, (dateMap.get(localDateStr) || 0) + 1);
+      }
     });
 
     const days: { date: string; count: number }[] = [];
@@ -863,58 +872,85 @@ export class DataService {
     current.setHours(0, 0, 0, 0);
 
     while (current <= endDate) {
-        const year = current.getFullYear();
-        const month = current.getMonth();
-        const day = current.getDate();
-        const localDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const year = current.getFullYear();
+      const month = current.getMonth();
+      const day = current.getDate();
+      const localDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-        days.push({ date: localDateStr, count: dateMap.get(localDateStr) || 0 });
-        current.setDate(current.getDate() + 1);
+      days.push({ date: localDateStr, count: dateMap.get(localDateStr) || 0 });
+      current.setDate(current.getDate() + 1);
     }
 
     return days;
   }
 
-  private static generateWeeklyRegistrations(people: Person[]) {
+  private static generateWeeklyRegistrations(people: Person[], startDate: Date, endDate: Date) {
     const weeks: { date: string; count: number }[] = []
-    const now = new Date()
 
-    for (let i = 11; i >= 0; i--) {
-      const weekStart = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000)
-      const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000)
+    // Normalize start date to the beginning of the week (Sunday)
+    const current = new Date(startDate);
+    current.setDate(current.getDate() - current.getDay());
+    current.setHours(0, 0, 0, 0);
 
-      const count = people.filter(p =>
-        p.created_at >= weekStart && p.created_at < weekEnd
-      ).length
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    let weekNum = 1;
+
+    while (current <= end) {
+      const weekStart = new Date(current);
+      const weekEnd = new Date(current);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+
+      const count = people.filter(p => {
+        const d = new Date(p.created_at);
+        return d >= weekStart && d < weekEnd;
+      }).length;
+
+      // Format: "Sem 1 (Oct 12)" or just "Semana 1"
+      // Using a more descriptive label for the chart
+      const label = `Sem ${weekNum} (${weekStart.getDate()}/${weekStart.getMonth() + 1})`;
 
       weeks.push({
-        date: `Semana ${12 - i}`,
+        date: label,
         count
-      })
+      });
+
+      current.setDate(current.getDate() + 7);
+      weekNum++;
     }
 
-    return weeks
+    return weeks;
   }
 
-  private static generateMonthlyRegistrations(people: Person[]) {
+  private static generateMonthlyRegistrations(people: Person[], startDate: Date, endDate: Date) {
     const months: { date: string; count: number }[] = []
-    const now = new Date()
 
-    for (let i = 11; i >= 0; i--) {
-      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const nextMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 1)
+    const current = new Date(startDate);
+    current.setDate(1); // Start at the beginning of the month
+    current.setHours(0, 0, 0, 0);
 
-      const count = people.filter(p =>
-        p.created_at >= monthDate && p.created_at < nextMonth
-      ).length
+    const end = new Date(endDate);
+    end.setDate(1); // Compare months only
+
+    while (current <= end) {
+      const monthStart = new Date(current);
+      const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 1);
+
+      const count = people.filter(p => {
+        const d = new Date(p.created_at);
+        return d >= monthStart && d < monthEnd;
+      }).length;
 
       months.push({
-        date: monthDate.toLocaleDateString('es-ES', { month: 'long' }),
+        date: monthStart.toLocaleDateString('es-ES', { month: 'long', year: '2-digit' }),
         count
-      })
+      });
+
+      current.setMonth(current.getMonth() + 1);
     }
 
-    return months
+    return months;
   }
 
   private static calculateRegionDistribution(people: Person[]): Record<string, number> {
@@ -992,37 +1028,37 @@ export class DataService {
     let dataToProcess = hierarchicalData;
 
     if (period !== 'all') {
-        const now = new Date();
-        let startDate: Date;
+      const now = new Date();
+      let startDate: Date;
 
-        if (period === 'day') {
-            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-        } else if (period === 'week') {
-            const firstDayOfWeek = new Date(now);
-            firstDayOfWeek.setDate(now.getDate() - now.getDay());
-            startDate = new Date(firstDayOfWeek.getFullYear(), firstDayOfWeek.getMonth(), firstDayOfWeek.getDate(), 0, 0, 0, 0);
-        } else { // month
-            startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-        }
-        
-        dataToProcess = this.filterHierarchyByDate(hierarchicalData, startDate, now);
+      if (period === 'day') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      } else if (period === 'week') {
+        const firstDayOfWeek = new Date(now);
+        firstDayOfWeek.setDate(now.getDate() - now.getDay());
+        startDate = new Date(firstDayOfWeek.getFullYear(), firstDayOfWeek.getMonth(), firstDayOfWeek.getDate(), 0, 0, 0, 0);
+      } else { // month
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      }
+
+      dataToProcess = this.filterHierarchyByDate(hierarchicalData, startDate, now);
     }
 
     return dataToProcess.map(leader => {
-        const brigadierCount = leader.children?.length || 0;
-        const mobilizerCount = leader.children?.reduce((sum, brigadista) => sum + (brigadista.children?.length || 0), 0) || 0;
-        const citizenCount = leader.children?.reduce((sum, brigadista) => sum + (brigadista.children?.reduce((s, m) => s + (m.children?.length || 0), 0) || 0), 0) || 0;
-        
-        return {
-            name: leader.name,
-            citizenCount,
-            brigadierCount,
-            mobilizerCount,
-            targetProgress: leader.registeredCount >= 50 ? 100 : (leader.registeredCount / 50) * 100, // This uses total registeredCount for progress
-            trend: 'stable' as const,
-            efficiency: citizenCount > 0 ? (citizenCount / Math.max(1, brigadierCount)) : 0,
-            lastUpdate: new Date()
-        };
+      const brigadierCount = leader.children?.length || 0;
+      const mobilizerCount = leader.children?.reduce((sum, brigadista) => sum + (brigadista.children?.length || 0), 0) || 0;
+      const citizenCount = leader.children?.reduce((sum, brigadista) => sum + (brigadista.children?.reduce((s, m) => s + (m.children?.length || 0), 0) || 0), 0) || 0;
+
+      return {
+        name: leader.name,
+        citizenCount,
+        brigadierCount,
+        mobilizerCount,
+        targetProgress: leader.registeredCount >= 50 ? 100 : (leader.registeredCount / 50) * 100, // This uses total registeredCount for progress
+        trend: 'stable' as const,
+        efficiency: citizenCount > 0 ? (citizenCount / Math.max(1, brigadierCount)) : 0,
+        lastUpdate: new Date()
+      };
     });
   }
 
@@ -1054,7 +1090,7 @@ export class DataService {
     }))
   }
 
-  private static calculateEnhancedSeasonality(people: Person[], monthlyData: { date: string; count: number }[]): { month: string; registrations: number; trend: 'up' | 'down' | 'stable' }[] {
+  private static calculateEnhancedSeasonality(monthlyData: { date: string; count: number }[]): { month: string; registrations: number; trend: 'up' | 'down' | 'stable' }[] {
     return monthlyData.map((month, index) => ({
       month: month.date,
       registrations: month.count,
@@ -1117,11 +1153,11 @@ export class DataService {
     return (duplicateCount / people.length) * 100
   }
 
-  private static calculatePostRegistrationActivity(people: Person[]): number {
+  private static calculatePostRegistrationActivity(): number {
     return Math.random() * 100 // Simplified implementation
   }
 
-  private static calculateEnhancedChurnRisk(allPeople: Person[], peopleByRole: Record<string, Person[]>): { id: string; name: string; risk: number; factors: string[] }[] {
+  private static calculateEnhancedChurnRisk(allPeople: Person[]): { id: string; name: string; risk: number; factors: string[] }[] {
     return allPeople.slice(0, 5).map(person => ({
       id: person.id,
       name: person.name,
@@ -1130,7 +1166,7 @@ export class DataService {
     }))
   }
 
-  private static calculateResourceOptimizationRecommendations(hierarchicalData: Person[], peopleByRole: Record<string, Person[]>): { area: string; recommendation: string; impact: number }[] {
+  private static calculateResourceOptimizationRecommendations(): { area: string; recommendation: string; impact: number }[] {
     return [
       {
         area: 'Distribución territorial',
@@ -1145,7 +1181,7 @@ export class DataService {
     ]
   }
 
-  private static identifyElectoralPatterns(allPeople: Person[], hierarchicalData: Person[], regionCounts: Record<string, number>): { pattern: string; confidence: number; description: string }[] {
+  private static identifyElectoralPatterns(): { pattern: string; confidence: number; description: string }[] {
     return [
       {
         pattern: 'Concentración urbana',
@@ -1475,24 +1511,27 @@ export class DataService {
     return data || [];
   }
 
-  static async deletePerson(personId: string, role: string, action: DeletionAction, newParentId?: string): Promise<void> {
+  static async reassignPerson(personId: string, newParentId: string, role: 'brigadista' | 'movilizador'): Promise<void> {
     return this.circuitBreaker.execute(async () => {
       return withDatabaseRetry(async () => {
-        const { error } = await supabase.rpc('delete_person_and_handle_children', {
-          p_person_id: personId,
-          p_role: role,
-          p_action: action,
-          p_new_parent_id: newParentId
-        });
+        const rpcName = role === 'brigadista' ? 'reasignar_brigadista' : 'reasignar_movilizador';
+        const params = role === 'brigadista'
+          ? { brigadista_id_in: personId, nuevo_lider_id_in: newParentId }
+          : { movilizador_id_in: personId, nuevo_brigadista_id_in: newParentId };
+
+        const { error } = await supabase.rpc(rpcName, params);
 
         if (error) {
-          const fullErrorMessage = `RPC Error: ${error.message} (Code: ${error.code}) - Details: ${error.details} - Hint: ${error.hint}`;
-          console.error('Supabase RPC error details:', error);
-          throw new DatabaseError(`Failed to delete person ${personId}. Reason: ${fullErrorMessage}`, error.code, { message: error.details }, error.hint);
+          // Convert string details to Record<string, unknown> format expected by DatabaseError
+          const errorDetails: Record<string, unknown> = error.details
+            ? { message: error.details }
+            : { message: 'Unknown database error' };
+
+          throw new DatabaseError(`Failed to execute ${rpcName} RPC`, error.code, errorDetails, error.hint);
         }
 
         await this.invalidateDataCache();
-        console.log(`Successfully deleted person ${personId}`);
+        console.log(`Reassignment successful for ${role} ${personId}`);
       });
     });
   }
@@ -1516,28 +1555,6 @@ export class DataService {
 
         await this.invalidateDataCache();
         console.log(`Update successful for ${role} ${personId}`);
-      });
-    });
-  }
-
-  static async reassignPerson(personId: string, newParentId: string, role: 'brigadista' | 'movilizador'): Promise<void> {
-    return this.circuitBreaker.execute(async () => {
-      return withDatabaseRetry(async () => {
-        const rpcName = role === 'brigadista' ? 'reasignar_brigadista' : 'reasignar_movilizador';
-        const params = role === 'brigadista'
-          ? { brigadista_id_in: personId, nuevo_lider_id_in: newParentId }
-          : { movilizador_id_in: personId, nuevo_brigadista_id_in: newParentId };
-
-        const { error } = await supabase.rpc(rpcName, params);
-
-        if (error) {
-          const fullErrorMessage = `RPC Error: ${error.message} (Code: ${error.code}) - Details: ${error.details} - Hint: ${error.hint}`;
-          console.error('Supabase RPC error details:', error);
-          throw new DatabaseError(`Failed to reassign ${role} ${personId}. Reason: ${fullErrorMessage}`, error.code, { message: error.details }, error.hint);
-        }
-
-        await this.invalidateDataCache();
-        console.log(`Successfully reassigned ${role} ${personId} to ${newParentId}`);
       });
     });
   }
@@ -2067,7 +2084,7 @@ export class DataService {
   }
 
   // Territorial Analytics Methods
-  static generateTerritorialAnalytics(hierarchicalData: Person[], allPeople: Person[]): TerritorialAnalytics {
+  static generateTerritorialAnalytics(allPeople: Person[]): TerritorialAnalytics {
     try {
       // Generate coverage metrics by different region types
       const entidadCoverage = this.generateCoverageMetrics(allPeople, 'entidad')
@@ -2080,13 +2097,13 @@ export class DataService {
       const workerDensity = this.generateWorkerDensityMetrics(allPeople)
 
       // Generate gap analysis
-      const gapAnalysis = this.generateTerritorialGapAnalysis(allPeople, coverageMetrics)
+      const gapAnalysis = this.generateTerritorialGapAnalysis(coverageMetrics)
 
       // Generate citizen-to-worker ratio metrics
       const citizenWorkerRatio = this.generateCitizenWorkerRatioMetrics(allPeople)
 
       // Generate summary
-      const summary = this.generateTerritorialSummary(coverageMetrics, gapAnalysis, citizenWorkerRatio)
+      const summary = this.generateTerritorialSummary(coverageMetrics, gapAnalysis)
 
       return {
         coverageMetrics,
@@ -2199,7 +2216,7 @@ export class DataService {
     return workerDensityMetrics.sort((a, b) => b.workerDensity - a.workerDensity)
   }
 
-  private static generateTerritorialGapAnalysis(allPeople: Person[], coverageMetrics: TerritorialCoverageMetric[]): TerritorialGapMetric[] {
+  private static generateTerritorialGapAnalysis(coverageMetrics: TerritorialCoverageMetric[]): TerritorialGapMetric[] {
     const gapMetrics: TerritorialGapMetric[] = []
 
     coverageMetrics.forEach(metric => {
@@ -2253,7 +2270,7 @@ export class DataService {
     return ratioMetrics
   }
 
-  private static generateTerritorialSummary(coverageMetrics: TerritorialCoverageMetric[], gapAnalysis: TerritorialGapMetric[], citizenWorkerRatio: CitizenWorkerRatioMetric[]): TerritorialSummary {
+  private static generateTerritorialSummary(coverageMetrics: TerritorialCoverageMetric[], gapAnalysis: TerritorialGapMetric[]): TerritorialSummary {
 
 
     const topPerformingRegions = coverageMetrics.slice(0, 3).map(region => ({

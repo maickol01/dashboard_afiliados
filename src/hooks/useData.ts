@@ -24,33 +24,33 @@ export const useData = (dateRange: DateRange | null) => {
 
   const handleError = useCallback((err: unknown): string => {
     console.error('Error al cargar datos:', err);
-    
+
     if (err instanceof NetworkError) {
       return 'Error de conexión. Verifica tu conexión a internet e intenta nuevamente.';
     }
-    
+
     if (err instanceof DatabaseError) {
       return 'Error en la base de datos. El problema puede ser temporal, intenta recargar la página.';
     }
-    
+
     if (err instanceof ValidationError) {
       return 'Error de validación de datos. Contacta al administrador si el problema persiste.';
     }
-    
+
     if (err instanceof ServiceError) {
       return 'Error del servicio. Intenta nuevamente en unos momentos.';
     }
-    
+
     if (err instanceof Error) {
       return `Error: ${err.message}`;
     }
-    
+
     return 'Error desconocido al cargar datos. Intenta recargar la página.';
   }, []);
 
   const fetchData = useCallback(async (isRetry: boolean = false, forceRefresh: boolean = false, isRealTimeUpdate: boolean = false) => {
     const startTime = Date.now();
-    
+
     try {
       // For real-time updates, don't show full loading state
       if (!isRealTimeUpdate) {
@@ -60,39 +60,39 @@ export const useData = (dateRange: DateRange | null) => {
         setError(null);
         setRetryCount(0);
       }
-      
+
       // Check cache status for performance metrics
       const cacheStatus = DataService.getCacheStatus();
       console.log('Cache status:', cacheStatus);
-      
+
       // Check service health before fetching data
       const healthCheck = await DataService.healthCheck();
       if (healthCheck.status === 'unhealthy') {
         throw new ServiceError('Service is currently unavailable');
       }
-      
+
       // Obtener datos jerárquicos de Supabase con optimizaciones
       const dataFetchStart = Date.now();
       const hierarchicalData = dateRange
         ? await DataService.getHierarchicalDataByDateRange(dateRange.startDate, dateRange.endDate)
         : await DataService.getAllHierarchicalData(forceRefresh);
       const dataFetchTime = Date.now() - dataFetchStart;
-      
+
       // Set data immediately for better UX
       setData(hierarchicalData);
-      
+
       // Generate analytics with loading state
       setAnalyticsLoading(true);
       const analyticsStart = Date.now();
       const analyticsData = await DataService.generateAnalyticsFromData(hierarchicalData, forceRefresh);
       const analyticsGenerationTime = Date.now() - analyticsStart;
-      
+
       setAnalytics(analyticsData);
       setAnalyticsLoading(false);
       setLastFetchTime(new Date());
       setError(null);
       setRetryCount(0);
-      
+
       // Set performance metrics - calculate total records
       const totalRecords = hierarchicalData.reduce((count, leader) => {
         let total = 1; // Count the leader
@@ -111,30 +111,30 @@ export const useData = (dateRange: DateRange | null) => {
         }
         return count + total;
       }, 0);
-      
+
       setPerformanceMetrics({
         dataFetchTime,
         analyticsGenerationTime,
         totalRecords,
         cacheHit: cacheStatus.dataCache || cacheStatus.analyticsCache
       });
-      
+
       const totalTime = Date.now() - startTime;
       const updateType = isRealTimeUpdate ? 'Real-time update' : 'Manual fetch';
       console.log(`${updateType} completed in ${totalTime}ms (Data: ${dataFetchTime}ms, Analytics: ${analyticsGenerationTime}ms, Records: ${totalRecords}, Cache Hit: ${cacheStatus.dataCache || cacheStatus.analyticsCache})`);
-      
+
     } catch (err) {
       const errorMessage = handleError(err);
       setError(errorMessage);
       setAnalyticsLoading(false);
-      
+
       // Auto-retry for retryable errors
       if ((err instanceof NetworkError || err instanceof DatabaseError) && retryCount < 3) {
         const newRetryCount = retryCount + 1;
         setRetryCount(newRetryCount);
-        
+
         console.warn(`Auto-retrying data fetch (attempt ${newRetryCount}/3) in 2 seconds...`);
-        
+
         setTimeout(() => {
           fetchData(true, forceRefresh, isRealTimeUpdate);
         }, 2000 * newRetryCount); // Exponential backoff
@@ -172,22 +172,6 @@ export const useData = (dateRange: DateRange | null) => {
   const refetchData = useCallback(() => {
     fetchData();
   }, [fetchData]);
-
-  // Memoized registration data by period to prevent object recreation
-  const getRegistrationsByPeriod = useCallback((period: Period) => {
-    if (!analytics) return [];
-    
-    switch (period) {
-      case 'day':
-        return analytics.dailyRegistrations;
-      case 'week':
-        return analytics.weeklyRegistrations;
-      case 'month':
-        return analytics.monthlyRegistrations;
-      default:
-        return analytics.dailyRegistrations;
-    }
-  }, [analytics]);
 
   // Memoized registration data results to prevent unnecessary re-renders
   const memoizedRegistrationsByDay = useMemo(() => {
@@ -255,12 +239,12 @@ export const useData = (dateRange: DateRange | null) => {
 
   const searchData = useCallback((query: string): Person[] => {
     if (!query.trim()) return data;
-    
+
     const searchInHierarchy = (people: Person[]): Person[] => {
       const results: Person[] = [];
-      
+
       people.forEach(person => {
-        const matchesSearch = 
+        const matchesSearch =
           person.name.toLowerCase().includes(query.toLowerCase()) ||
           person.nombre.toLowerCase().includes(query.toLowerCase()) ||
           person.id.toLowerCase().includes(query.toLowerCase()) ||
@@ -268,62 +252,62 @@ export const useData = (dateRange: DateRange | null) => {
           (person.colonia && person.colonia.toLowerCase().includes(query.toLowerCase())) ||
           (person.seccion && person.seccion.toLowerCase().includes(query.toLowerCase())) ||
           (person.numero_cel && person.numero_cel.toLowerCase().includes(query.toLowerCase()));
-        
+
         if (matchesSearch) {
           results.push(person);
         }
-        
+
         if (person.children) {
           results.push(...searchInHierarchy(person.children));
         }
       });
-      
+
       return results;
     };
-    
+
     return searchInHierarchy(data);
   }, [data]);
 
   const filterByRole = useCallback((role: string): Person[] => {
     if (role === 'all') return data;
-    
+
     const filterInHierarchy = (people: Person[]): Person[] => {
       const results: Person[] = [];
-      
+
       people.forEach(person => {
         if (person.role === role) {
           results.push(person);
         }
-        
+
         if (person.children) {
           results.push(...filterInHierarchy(person.children));
         }
       });
-      
+
       return results;
     };
-    
+
     return filterInHierarchy(data);
   }, [data]);
 
   const filterByDate = useCallback((startDate: Date, endDate: Date): Person[] => {
     const filterInHierarchy = (people: Person[]): Person[] => {
       const results: Person[] = [];
-      
+
       people.forEach(person => {
         const personDate = new Date(person.created_at);
         if (personDate >= startDate && personDate <= endDate) {
           results.push(person);
         }
-        
+
         if (person.children) {
           results.push(...filterInHierarchy(person.children));
         }
       });
-      
+
       return results;
     };
-    
+
     return filterInHierarchy(data);
   }, [data]);
 
@@ -333,23 +317,23 @@ export const useData = (dateRange: DateRange | null) => {
       console.warn('Invalid registration data: expected array, got:', typeof data);
       return [];
     }
-    
+
     return data.filter(item => {
       if (!item || typeof item !== 'object') {
         console.warn('Invalid registration item: expected object, got:', typeof item);
         return false;
       }
-      
+
       if (typeof item.date !== 'string' || !item.date.trim()) {
         console.warn('Invalid registration date: expected non-empty string, got:', typeof item.date);
         return false;
       }
-      
+
       if (typeof item.count !== 'number' || isNaN(item.count) || item.count < 0) {
         console.warn('Invalid registration count: expected non-negative number, got:', item.count);
         return false;
       }
-      
+
       return true;
     });
   }, []);
@@ -359,25 +343,25 @@ export const useData = (dateRange: DateRange | null) => {
       console.warn('Invalid leader performance data: expected array, got:', typeof data);
       return [];
     }
-    
+
     return data.filter(item => {
       if (!item || typeof item !== 'object') {
         console.warn('Invalid leader performance item: expected object, got:', typeof item);
         return false;
       }
-      
+
       const typedItem = item as any;
-      
+
       if (typeof typedItem.name !== 'string' || !typedItem.name.trim()) {
         console.warn('Invalid leader name: expected non-empty string, got:', typeof typedItem.name);
         return false;
       }
-      
+
       if (typeof typedItem.citizenCount !== 'number' || isNaN(typedItem.citizenCount) || typedItem.citizenCount < 0) {
         console.warn('Invalid citizen count: expected non-negative number, got:', typedItem.citizenCount);
         return false;
       }
-      
+
       return true;
     }) as LeaderPerformanceData[];
   }, []);

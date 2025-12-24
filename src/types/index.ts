@@ -7,7 +7,7 @@ export interface Person {
   children?: Person[];
   isActive?: boolean;
   lastActivity?: Date;
-  
+
   // Campos de la base de datos
   nombre: string;
   clave_electoral?: string;
@@ -20,12 +20,12 @@ export interface Person {
   municipio?: string;
   numero_cel?: string;
   num_verificado: boolean;
-  
+
   // Campos específicos por rol
   lider_id?: string; // Para brigadistas
   brigadista_id?: string; // Para movilizadores
   movilizador_id?: string; // Para ciudadanos
-  
+
   // Campos calculados
   registeredCount: number;
   contactInfo?: {
@@ -38,7 +38,7 @@ export interface Person {
     monthlyGoal: number;
     achievementRate: number;
   };
-  
+
   // Campos adicionales para compatibilidad
   region?: string;
   registrationDate?: Date;
@@ -56,7 +56,7 @@ export interface Analytics {
   enhancedLeaderPerformance?: LeaderPerformanceData[];
   conversionRate: number;
   growthRate: number;
-  
+
   // Nuevas métricas avanzadas
   efficiency: {
     conversionByLeader: { leaderId: string; name: string; rate: number; target: number }[];
@@ -65,7 +65,7 @@ export interface Analytics {
     needsSupport: { id: string; name: string; role: string; issue: string }[];
     registrationSpeed: { average: number; fastest: number; slowest: number };
   };
-  
+
   geographic: {
     regionDistribution: { region: string; count: number; percentage: number }[];
     municipioDistribution?: { region: string; count: number; percentage: number }[];
@@ -73,7 +73,7 @@ export interface Analytics {
     heatmapData: { region: string; intensity: number; coordinates?: [number, number] }[];
     territorialCoverage: { region: string; coverage: number; target: number }[];
   };
-  
+
   temporal: {
     hourlyPatterns: { hour: number; registrations: number }[];
     weeklyPatterns: { day: string; registrations: number }[];
@@ -86,34 +86,34 @@ export interface Analytics {
       activityTrends: { period: string; trend: 'increasing' | 'decreasing' | 'stable'; change: number }[];
     };
   };
-  
+
   quality: {
     dataCompleteness: number;
     duplicateRate: number;
     verificationRate: number;
     postRegistrationActivity: number;
   };
-  
+
   goals: {
     overallProgress: { current: number; target: number; percentage: number };
     individualGoals: { id: string; name: string; current: number; target: number; status: 'on-track' | 'behind' | 'ahead' }[];
     milestones: { date: string; description: string; completed: boolean; target: number }[];
   };
-  
+
   alerts: {
     critical: { id: string; message: string; type: 'performance' | 'inactivity' | 'goal' | 'quality' }[];
     warnings: { id: string; message: string; type: 'performance' | 'inactivity' | 'goal' | 'quality' }[];
     achievements: { id: string; message: string; date: Date }[];
   };
-  
+
   predictions: {
     churnRisk: { id: string; name: string; risk: number; factors: string[] }[];
     resourceOptimization: { area: string; recommendation: string; impact: number }[];
     patterns: { pattern: string; confidence: number; description: string }[];
   };
-  
 
-  
+
+
   // Territorial coverage analytics
   territorial?: TerritorialAnalytics;
 }
@@ -158,11 +158,11 @@ export interface ComparisonPeriod {
 }
 
 // Re-export error types for convenience
-export { 
-  DatabaseError, 
-  NetworkError, 
-  ValidationError, 
-  ServiceError, 
+export {
+  DatabaseError,
+  NetworkError,
+  ValidationError,
+  ServiceError,
   RetryableError,
   isNetworkError,
   isDatabaseError,

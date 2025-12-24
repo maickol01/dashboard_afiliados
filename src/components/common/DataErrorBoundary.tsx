@@ -1,57 +1,60 @@
-import React from 'react';
-import { ErrorBoundary } from './ErrorBoundary';
-import { DatabaseError, NetworkError, ValidationError } from '../../types/errors';
-import { AlertCircle, Wifi, Database, AlertTriangle } from 'lucide-react';
+import React from 'react'
+import { ErrorBoundary } from './ErrorBoundary'
+import { DatabaseError, NetworkError, ValidationError } from '../../types/errors'
+import { AlertCircle, Wifi, Database, AlertTriangle } from 'lucide-react'
 
 interface DataErrorBoundaryProps {
-  children: React.ReactNode;
-  onRetry?: () => void;
-  fallbackComponent?: React.ComponentType<{ error: Error; onRetry?: () => void }>;
+  children: React.ReactNode
+  onRetry?: () => void
+  fallbackComponent?: React.ComponentType<{ error: Error; onRetry?: () => void }>
 }
 
 const DataErrorFallback: React.FC<{ error: Error; onRetry?: () => void }> = ({ error, onRetry }) => {
-  const getErrorDetails = () => {
+  const getErrorIcon = () => {
+    if (error instanceof NetworkError) return <Wifi className="w-8 h-8 text-red-500" />
+    if (error instanceof DatabaseError) return <Database className="w-8 h-8 text-red-500" />
+    if (error instanceof ValidationError) return <AlertTriangle className="w-8 h-8 text-yellow-500" />
+    return <AlertCircle className="w-8 h-8 text-red-500" />
+  }
+
+  const getErrorMessage = () => {
     if (error instanceof NetworkError) {
       return {
-        icon: <Wifi className="w-8 h-8 text-red-500" />,
         title: 'Error de Conexión',
         description: 'No se pudo conectar con el servidor. Verifica tu conexión a internet.',
         suggestion: 'Intenta nuevamente en unos momentos.'
-      };
+      }
     }
     
     if (error instanceof DatabaseError) {
       return {
-        icon: <Database className="w-8 h-8 text-red-500" />,
         title: 'Error de Base de Datos',
         description: 'Hubo un problema al acceder a los datos.',
         suggestion: 'El problema puede ser temporal. Intenta recargar la página.'
-      };
+      }
     }
     
     if (error instanceof ValidationError) {
       return {
-        icon: <AlertTriangle className="w-8 h-8 text-yellow-500" />,
         title: 'Error de Validación',
         description: 'Los datos recibidos no tienen el formato esperado.',
         suggestion: 'Contacta al administrador si el problema persiste.'
-      };
+      }
     }
     
     return {
-      icon: <AlertCircle className="w-8 h-8 text-red-500" />,
       title: 'Error Inesperado',
       description: 'Ha ocurrido un error inesperado al cargar los datos.',
       suggestion: 'Intenta recargar la página o contacta al soporte técnico.'
-    };
-  };
+    }
+  }
 
-  const errorInfo = getErrorDetails();
+  const errorInfo = getErrorMessage()
 
   return (
     <div className="flex flex-col items-center justify-center p-8 bg-white rounded-lg shadow-sm border border-gray-200">
       <div className="flex flex-col items-center text-center max-w-md">
-        {errorInfo.icon}
+        {getErrorIcon()}
         
         <h3 className="mt-4 text-lg font-semibold text-gray-900">
           {errorInfo.title}
@@ -93,7 +96,7 @@ const DataErrorFallback: React.FC<{ error: Error; onRetry?: () => void }> = ({ e
         )}
       </div>
     </div>
-  );
+  )
 }
 
 export const DataErrorBoundary: React.FC<DataErrorBoundaryProps> = ({ 
@@ -103,7 +106,7 @@ export const DataErrorBoundary: React.FC<DataErrorBoundaryProps> = ({
 }) => {
   return (
     <ErrorBoundary
-      fallbackRender={(error) => <FallbackComponent error={error} onRetry={onRetry} />}
+      fallback={<FallbackComponent error={new Error('Unknown error')} onRetry={onRetry} />}
       onError={(error, errorInfo) => {
         console.error('DataErrorBoundary caught error:', error, errorInfo)
         
