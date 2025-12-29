@@ -8,7 +8,7 @@ This plan outlines the steps to implement the interactive Navojoa map for geogra
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Data Engineering & Schema' [7544088]
 
 ## Phase 2: Backend & Geocoding Service
-- [ ] Task: Research and obtain Mapbox API Key (or select Open Data alternative) and configure environment variables
+- [x] Task: Research and obtain Mapbox API Key (or select Open Data alternative) and configure environment variables [4e20563]
 - [ ] Task: Implement "Lazy Geocoding" logic (Service or Edge Function) to process addresses into coordinates
 - [ ] Task: Implement database trigger or app-level hook to initiate geocoding on record insert/update
 - [ ] Task: Create specific data service methods to fetch geolocated affiliates with status filtering
