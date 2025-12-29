@@ -1,30 +1,31 @@
 # Track Plan: Geographic Analysis - Navojoa Map
 
-This plan outlines the steps to implement the interactive Navojoa map for geographic analysis.
+This plan outlines the steps to implement the interactive Navojoa map for geographic analysis, following the "Lazy Geocoding" and "Red Pin" specification.
 
-## Phase 1: Research and Setup
-- [ ] Task: Research and select a mapping library (e.g., `react-leaflet`) and verify compatibility
-- [ ] Task: Source GeoJSON data for Navojoa electoral sections
-- [ ] Task: Install necessary dependencies (`leaflet`, `react-leaflet`, `@types/leaflet`)
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Research and Setup' (Protocol in workflow.md)
+## Phase 1: Data Engineering & Schema
+- [x] Task: Verify and process `SECCION-Navojoa.json` (Ensure WGS84 projection and optimize size if needed) [ef578da]
+- [ ] Task: Create/Verify Supabase migration for geospatial columns (`lat`, `lng`, `geocode_status`, `geocoded_at`) on `lideres`, `brigadistas`, `movilizadores`, `ciudadanos`
+- [ ] Task: Conductor - User Manual Verification 'Phase 1: Data Engineering & Schema'
 
-## Phase 2: Data Service & Backend Integration
-- [ ] Task: Create a service method to fetch citizen counts aggregated by electoral section
-- [ ] Task: Write tests for the new data service method
-- [ ] Task: Implement the data fetching logic in `src/services/dataService.ts` or a new service
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Data Service & Backend Integration' (Protocol in workflow.md)
+## Phase 2: Backend & Geocoding Service
+- [ ] Task: Research and obtain Mapbox API Key (or select Open Data alternative) and configure environment variables
+- [ ] Task: Implement "Lazy Geocoding" logic (Service or Edge Function) to process addresses into coordinates
+- [ ] Task: Implement database trigger or app-level hook to initiate geocoding on record insert/update
+- [ ] Task: Create specific data service methods to fetch geolocated affiliates with status filtering
+- [ ] Task: Conductor - User Manual Verification 'Phase 2: Backend & Geocoding Service'
 
-## Phase 3: Map Component Implementation
-- [ ] Task: Create the basic `NavojoaMap` component structure
-- [ ] Task: Write tests for the `NavojoaMap` component (rendering, basic interactivity)
-- [ ] Task: Implement the electoral section layer using GeoJSON
-- [ ] Task: Implement the citizen density (choropleth) layer
-- [ ] Task: Add tooltips/popups for section-specific data
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Map Component Implementation' (Protocol in workflow.md)
+## Phase 3: Frontend Map Component (React-Leaflet)
+- [ ] Task: Install dependencies: `leaflet`, `react-leaflet`, `leaflet.markercluster`, `@types/leaflet`
+- [ ] Task: Create `NavojoaMap` container with Base Layer (OSM/Carto) and `LayersControl`
+- [ ] Task: Implement `ElectoralSectionLayer` rendering the GeoJSON polygons
+- [ ] Task: Create Custom SVG "Red Pin" Icon component/asset
+- [ ] Task: Implement `AffiliateMarkerLayer` with `MarkerClusterGroup` for performance
+- [ ] Task: Conductor - User Manual Verification 'Phase 3: Frontend Map Component'
 
-## Phase 4: Page Integration and UI/UX
+## Phase 4: Integration, UX & Manual Fallback
 - [ ] Task: Integrate `NavojoaMap` into `GeographicAnalysisPage.tsx`
-- [ ] Task: Add filters or toggles (e.g., toggle density layer, toggle data quality layer)
-- [ ] Task: Ensure responsive design and mobile compatibility
-- [ ] Task: Final polish and styling alignment with existing dashboard
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Page Integration and UI/UX' (Protocol in workflow.md)
+- [ ] Task: Connect map to global dashboard filters (Role, Date, etc.)
+- [ ] Task: Implement interactive Popups (Name, Role badge, "View Profile" button)
+- [ ] Task: Implement "Manual Fallback" mode: Allow dragging pins to correct location and update `lat`/`lng` in DB
+- [ ] Task: Final responsive design check and mobile performance optimization
+- [ ] Task: Conductor - User Manual Verification 'Phase 4: Integration, UX & Manual Fallback'
