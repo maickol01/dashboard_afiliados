@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
 import { MapContainer, TileLayer, LayersControl, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 import { ElectoralSectionLayer } from './ElectoralSectionLayer';
 import { AffiliateMarkerLayer } from './AffiliateMarkerLayer';
-import { Person } from '../../../types';
+import { Person, NavojoaElectoralSection } from '../../../types';
+import { X, Users, MapPin } from 'lucide-react';
 
 // Fix for default Leaflet icon issues with Vite/Webpack
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -29,20 +29,56 @@ interface NavojoaMapProps {
     isEditable?: boolean;
 }
 
-/**
- * Component to handle map resizing and other leaflet-specific logic
- */
 const MapController = () => {
     const map = useMap();
-    
     useEffect(() => {
-        // Force a resize check after mount to ensure map fills container
-        setTimeout(() => {
-            map.invalidateSize();
-        }, 100);
+        setTimeout(() => map.invalidateSize(), 100);
     }, [map]);
-
     return null;
+};
+
+const SectionDetailPanel: React.FC<{ section: NavojoaElectoralSection | null, onClose: () => void }> = ({ section, onClose }) => {
+    if (!section) return null;
+
+    return (
+        <div className="absolute top-4 right-4 z-[1000] w-72 bg-white/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-200 p-4 animate-fade-in-right">
+            <div className="flex justify-between items-center mb-3">
+                <h3 className="font-bold text-primary flex items-center gap-2">
+                    <MapPin className="w-5 h-5"/>
+                    Sección {section.sectionNumber}
+                </h3>
+                <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full"><X className="w-4 h-4"/></button>
+            </div>
+            <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                    <span className="text-gray-600">Colonia Principal:</span>
+                    <span className="font-medium text-gray-800">{section.colonia || 'N/D'}</span>
+                </div>
+                <div className="flex justify-between items-center bg-gray-50 p-2 rounded-md">
+                    <span className="text-gray-700 font-bold">Total Registros:</span>
+                    <span className="font-bold text-lg text-primary">{section.totalRegistrations}</span>
+                </div>
+                <div className="border-t my-2"></div>
+                <h4 className="font-semibold text-gray-700 pt-1">Desglose:</h4>
+                <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">Líderes:</span>
+                    <span className="font-medium">{section.lideres}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">Brigadistas:</span>
+                    <span className="font-medium">{section.brigadistas}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">Movilizadores:</span>
+                    <span className="font-medium">{section.movilizadores}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">Ciudadanos:</span>
+                    <span className="font-medium">{section.ciudadanos}</span>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 export const NavojoaMap: React.FC<NavojoaMapProps> = ({ 
@@ -51,11 +87,14 @@ export const NavojoaMap: React.FC<NavojoaMapProps> = ({
     isEditable: initialEditable = false
 }) => {
     const [isEditable, setIsEditable] = React.useState(initialEditable);
+    const [selectedSection, setSelectedSection] = React.useState<NavojoaElectoralSection | null>(null);
 
     return (
         <div style={{ height, width: '100%', position: 'relative' }} className="rounded-xl overflow-hidden border border-gray-200 shadow-sm">
-            {/* Toggle Editable Mode Button */}
-            <div className="absolute top-20 left-3 z-[1000] flex flex-col gap-2">
+            
+            <SectionDetailPanel section={selectedSection} onClose={() => setSelectedSection(null)} />
+            
+            <div className="absolute top-4 left-3 z-[1000] flex flex-col gap-2">
                 <button
                     onClick={() => setIsEditable(!isEditable)}
                     className={`p-2 rounded-md shadow-md transition-colors ${
@@ -88,32 +127,32 @@ export const NavojoaMap: React.FC<NavojoaMapProps> = ({
                 <MapController />
                 
                 <LayersControl position="topright">
-                    <LayersControl.BaseLayer checked name="Calles (OpenStreetMap)">
+                    <LayersControl.BaseLayer checked name="Calles (OSM)">
                         <TileLayer
                             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
                     </LayersControl.BaseLayer>
                     
-                    <LayersControl.BaseLayer name="Alto Contraste (CartoDB)">
+                    <LayersControl.BaseLayer name="Alto Contraste">
                         <TileLayer
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                            attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>'
                             url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                         />
                     </LayersControl.BaseLayer>
 
                     <LayersControl.BaseLayer name="Satélite">
                         <TileLayer
-                            attribution='&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                            attribution='&copy; Esri, i-cubed, USDA, USGS'
                             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                         />
                     </LayersControl.BaseLayer>
 
                     <LayersControl.Overlay checked name="Secciones Electorales">
-                        <ElectoralSectionLayer data={data} />
+                        <ElectoralSectionLayer data={data} onSectionSelect={setSelectedSection} />
                     </LayersControl.Overlay>
 
-                    <LayersControl.Overlay checked name="Afiliados (Líderes, Brigadistas...)">
+                    <LayersControl.Overlay checked name="Afiliados">
                         <AffiliateMarkerLayer data={data} isEditable={isEditable} />
                     </LayersControl.Overlay>
                 </LayersControl>
@@ -121,5 +160,6 @@ export const NavojoaMap: React.FC<NavojoaMapProps> = ({
         </div>
     );
 };
+
 
 export default NavojoaMap;
