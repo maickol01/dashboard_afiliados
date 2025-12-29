@@ -1,0 +1,182 @@
+﻿Especificación Técnica Arquitectónica: Sistema de Inteligencia Geoespacial Electoral para el Dashboard de Navojoa, Sonora
+1. Visión Estratégica y Definición del Alcance Técnico
+La evolución de las plataformas de gestión política y electoral demanda una transición de modelos basados en listados tabulares hacia interfaces de inteligencia visual que permitan la toma de decisiones tácticas en tiempo real. El presente documento técnico constituye la hoja de ruta integral para la actualización del dashboard existente, transformándolo en una herramienta de comando geoespacial de alto rendimiento. El objetivo central es la implementación de un módulo de cartografía interactiva centrado en el municipio de Navojoa, Sonora, perteneciente al Distrito Electoral Federal 07.1 Esta actualización no se limita a la simple representación gráfica; implica una reingeniería de la capa de datos para soportar tipos espaciales, la integración de servicios de geocodificación inversa para transformar direcciones postales en coordenadas precisas y el despliegue de una interfaz de usuario optimizada que visualice la dispersión de la fuerza operativa (Líderes, Brigadistas, Movilizadores) mediante marcadores personalizados.
+La arquitectura propuesta se alinea estrictamente con el stack tecnológico detectado en el análisis del código fuente: un frontend reactivo construido con React y TypeScript, respaldado por una infraestructura de datos en Supabase.2 La solución prioriza la escalabilidad, la eficiencia en el renderizado de miles de puntos de datos y la mantenibilidad del código a largo plazo. Al integrar la cartografía electoral oficial del Instituto Nacional Electoral (INE), el sistema permitirá correlacionar la ubicación de los afiliados con las demarcaciones oficiales (secciones), revelando patrones de cobertura, "zonas de calor" de actividad y vacíos logísticos que requieren intervención inmediata.
+Este reporte desglosa la implementación en capas lógicas: ingeniería de datos espaciales, servicios de backend, arquitectura de frontend y optimización de rendimiento, proporcionando una guía exhaustiva para el equipo de desarrollo. La inclusión del vector rojo personalizado no es meramente un requerimiento estético, sino el componente central de la interfaz visual, actuando como el punto de interacción principal entre el operador y la data analítica subyacente.
+2. Auditoría de Infraestructura y Compatibilidad del Stack
+2.1. Análisis del Ecosistema React y TypeScript
+La revisión de los archivos fuente revela una aplicación madura y bien estructurada que utiliza React con TypeScript, evidenciado por la extensión .tsx y las interfaces de datos fuertemente tipadas en archivos como src/types/index.ts.2 Este entorno proporciona una base sólida para la integración de bibliotecas de mapeo complejas, ya que el tipado estático ayudará a prevenir errores comunes relacionados con la manipulación de coordenadas (latitud/longitud vs longitud/latitud) y estructuras GeoJSON complejas.
+El uso actual de componentes funcionales y Hooks personalizados, como useData 2, sugiere que la aplicación gestiona el estado de manera eficiente. Para el módulo de mapas, es imperativo mantener este patrón. La introducción de un estado global para el mapa (nivel de zoom, centro, filtros de capas) debe gestionarse con cuidado para evitar renderizados innecesarios que degraden la experiencia del usuario, especialmente cuando se visualizan grandes volúmenes de datos en dispositivos móviles, una consideración crítica dado el hook useMobileDetection ya presente en el proyecto.2
+2.2. Capa de Persistencia y Servicios de Datos
+La aplicación se apoya en Supabase como Backend-as-a-Service (BaaS), utilizando su cliente JS para la interacción directa con la base de datos PostgreSQL.2 La clase DataService abstrae la lógica de recuperación de datos, implementando patrones de reintento (withDatabaseRetry) y caché inteligente (IntelligentCacheManager).2 Esta arquitectura es ideal para la implementación geoespacial, ya que PostgreSQL, a través de su extensión PostGIS, es el estándar de oro para bases de datos espaciales. Aunque la implementación actual maneja direcciones como cadenas de texto (direccion, colonia, codigo_postal), la infraestructura subyacente está preparada para soportar tipos de datos geométricos (geometry(Point, 4326)), lo que permitirá realizar consultas espaciales avanzadas, como "buscar todos los afiliados dentro de un radio de 500 metros" o "filtrar afiliados dentro del polígono de la Sección 652".
+La estructura de datos actual, definida en la interfaz Person, unifica los roles de la estructura electoral. Sin embargo, carece de los atributos necesarios para el posicionamiento en el mapa. La expansión del modelo de datos es un prerrequisito no negociable para el éxito del proyecto.
+2.3. Evaluación de Componentes de Visualización Existentes
+El sistema ya cuenta con componentes analíticos sofisticados, como SectionHeatMap y SectionStackedBarChart 2, lo que indica que el equipo de desarrollo y los usuarios finales ya están familiarizados con el análisis de datos a nivel de sección electoral. Sin embargo, estas visualizaciones son abstractas y estadísticas. El nuevo mapa funcionará como una capa complementaria que "aterriza" estas estadísticas en el territorio físico. Es crucial que el nuevo componente de mapa comparta la misma paleta de colores y lenguaje de diseño (definidos en tailwind.config.js o index.css 2) para mantener la coherencia visual. El uso de recharts para gráficos sugiere una preferencia por bibliotecas declarativas, lo cual refuerza la recomendación de usar react-leaflet sobre la API imperativa nativa de Google Maps.
+3. Ingeniería de Datos Geoespaciales: El Reto de la Cartografía Electoral
+La implementación exitosa del mapa de Navojoa depende de la precisión de los datos geográficos base. A diferencia de un mapa comercial genérico, un mapa electoral requiere la superposición exacta de los límites legales de las secciones electorales definidas por el INE.
+3.1. Arquitectura de la Geografía Electoral en Sonora
+El estado de Sonora se divide política y electoralmente en distritos federales y locales. Navojoa funge como cabecera del Distrito Electoral Federal 07, el cual abarca una región amplia del sur del estado, incluyendo municipios vecinos.1 Sin embargo, para efectos de operación territorial a nivel municipal, el foco debe estar estrictamente en las secciones que componen el municipio de Navojoa.
+Según los catálogos del INE y los acuerdos de distritación recientes, el Distrito 07 se conforma por un conjunto específico de secciones. Es vital entender que las secciones no son estáticas; sufren "reseccionamientos" cuando la población excede ciertos límites.3 Por ello, se debe utilizar la cartografía más reciente disponible (corte 2024 o posterior) para asegurar que los límites visualizados correspondan con las credenciales de elector vigentes de los ciudadanos. La documentación indica rangos de secciones específicos para Navojoa (por ejemplo, secciones 652 a 692, y otras series dependiendo de la redistritación).4 El sistema debe ser capaz de filtrar los polígonos del distrito completo para mostrar y renderizar únicamente los correspondientes a Navojoa, evitando ruido visual y carga innecesaria de datos.
+3.2. Adquisición y Procesamiento de Insumos Vectoriales
+Los datos cartográficos del INE se distribuyen típicamente en formato Shapefile (.shp), un estándar de la industria GIS que consiste en múltiples archivos (.shp,.shx,.dbf,.prj).5 Los navegadores web y las bibliotecas como Leaflet no pueden renderizar Shapefiles nativamente de manera eficiente; requieren formatos web-friendly como GeoJSON o TopoJSON.6
+El proceso de ingeniería de datos para preparar el mapa base de Navojoa implica una serie de transformaciones críticas para asegurar rendimiento y precisión:
+1. Extracción y Filtrado: Se debe descargar el paquete de cartografía electoral para la entidad 26 (Sonora) desde el portal del SIGE o repositorios de datos abiertos confiables.5 Utilizando software GIS (QGIS) o herramientas de línea de comandos, se deben seleccionar los polígonos cuyo atributo de municipio (MUN o CLAVE_MUN) corresponda a Navojoa (Clave INEGI 042 o Clave INE correspondiente).
+2. Reproyección de Coordenadas (CRS): Los archivos oficiales del INE suelen utilizar la proyección ITRF2008 o LCC (Cónica Conforme de Lambert) para minimizar distorsiones métricas en el territorio nacional.8 Sin embargo, las bibliotecas de mapas web (Leaflet, Google Maps, Mapbox) operan exclusivamente bajo el estándar WGS84 (EPSG:4326). Intentar renderizar coordenadas ITRF08 directamente resultará en un desplazamiento significativo de los polígonos respecto al mapa base (calles), haciendo que los pines de los afiliados aparezcan "flotando" en lugares incorrectos. La reproyección es un paso obligatorio e ineludible.9
+3. Simplificación Topológica: Los archivos originales del INE tienen una precisión milimétrica, resultando en archivos de varios megabytes. Para una aplicación web, tal nivel de detalle es innecesario y contraproducente. Se recomienda aplicar un algoritmo de simplificación (como Visvalingam-Whyatt) para reducir la cantidad de vértices en un 80-90%, manteniendo la forma visual de la sección pero reduciendo drásticamente el peso del archivo GeoJSON (objetivo: < 500KB para todo el municipio).10
+3.3. Integración de GeoJSON en la Aplicación
+Una vez procesado, el archivo navojoa_secciones.json se integrará en el proyecto como un activo estático o se servirá desde un bucket de almacenamiento (Supabase Storage) si se planea actualizar dinámicamente. La estructura del GeoJSON debe contener, dentro de las properties de cada feature, la clave de la sección (SECCION), la cual servirá como llave foránea para enlazar los datos estadísticos del dashboard (número de afiliados, meta, avance) con la representación geométrica en el mapa.
+Propiedad GeoJSON
+	Tipo de Dato
+	Descripción
+	Uso en Dashboard
+	SECCION
+	String/Integer
+	Identificador único de la sección
+	Enlace con base de datos (lideres, metas)
+	DISTRITO
+	String
+	Distrito Federal/Local
+	Filtrado por nivel de jurisdicción
+	MUNICIPIO
+	String
+	Nombre del Municipio (Navojoa)
+	Validación de integridad de datos
+	TIPO
+	String
+	Urbano / Rural / Mixto
+	Estilización condicional del mapa
+	4. Estrategia de Geocodificación: Del Texto a la Coordenada
+El requerimiento estipula mostrar la "ubicación exacta" basada en direcciones. Dado que la base de datos actual carece de coordenadas (lat, lng), es necesario implementar un motor de geocodificación. Este es el desafío técnico más significativo debido a la naturaleza a menudo no estandarizada de las direcciones en México (e.g., "Domicilio Conocido", "A 2 cuadras de la escuela").
+4.1. Análisis Comparativo de Motores de Geocodificación
+Para el contexto de Navojoa, Sonora, se evaluaron las principales opciones del mercado considerando precisión, costo y facilidad de integración.
+
+
+Característica
+	Google Maps Geocoding API
+	Mapbox Geocoding API
+	OpenCage / Geoapify
+	Precisión en México
+	Muy Alta. Excelente manejo de direcciones informales y POIs. 11
+	Alta. Muy buena en zonas urbanas, variable en zonas rurales profundas. 12
+	Media. Depende totalmente de la calidad de OpenStreetMap en la zona. 13
+	Modelo de Costos
+	Alto. ~$5.00 USD por 1,000 peticiones. Modelo Pay-as-you-go estricto. 14
+	Moderado/Bajo. Generosa capa gratuita (~100k peticiones/mes). 15
+	Bajo/Medio. Planes fijos y capas gratuitas razonables.
+	Políticas de Almacenamiento
+	Restrictivas. Prohíbe almacenar (cachear) datos permanentemente, salvo el place_id. 11
+	Permisivas. Permite el almacenamiento de resultados para uso en sus propios mapas.
+	Generalmente permisivas para almacenamiento de coordenadas.
+	Facilidad de Integración
+	Excelente SDK y documentación.
+	Excelente API REST y bibliotecas cliente.
+	API REST estándar.
+	Recomendación Técnica: Se recomienda utilizar Mapbox Geocoding API.
+* Justificación Económica: Su capa gratuita permite procesar grandes lotes iniciales de direcciones sin costo inmediato, ideal para la carga inicial de la base de datos de afiliados.
+* Justificación Técnica: Mapbox permite explícitamente el almacenamiento de las coordenadas resultantes ("Caching"), lo cual es fundamental para nuestra arquitectura. No queremos geocodificar la dirección cada vez que se carga el mapa; queremos hacerlo una vez y guardar la latitud/longitud en Supabase.
+* Fallback: En casos donde Mapbox no encuentre una dirección crítica, se puede implementar un mecanismo de respaldo manual donde el operador "arrastra" el pin a la ubicación correcta.
+4.2. Arquitectura de Geocodificación "Lazy" e Incremental
+Geocodificar toda la base de datos de una sola vez puede ser costoso y propenso a errores de rate limiting. Se propone una estrategia de geocodificación asíncrona:
+1. Modificación del Esquema: Añadir columnas lat (double), lng (double), geocoded_at (timestamp) y geocode_status (enum: 'pending', 'success', 'failed', 'manual') a las tablas de personas en Supabase.
+2. Trigger de Base de Datos / Edge Function: Utilizar las Database Webhooks o Edge Functions de Supabase. Cuando se inserta o actualiza un registro en la tabla lideres (o brigadistas, etc.), se dispara una función asíncrona.
+3. Procesamiento:
+   * La función construye una query estructurada: {calle} {numero}, {colonia}, Navojoa, Sonora, Mexico.
+   * Consulta la API de Mapbox.
+   * Si hay éxito (confianza > 0.8), actualiza el registro con lat, lng y status='success'.
+   * Si falla o la confianza es baja, marca status='failed', alertando al administrador para una corrección manual.
+Este enfoque asegura que el mapa se mantenga actualizado automáticamente a medida que crece el padrón, sin intervención humana constante y optimizando el consumo de la API.
+5. Arquitectura del Frontend: El Mapa Interactivo
+La elección de la biblioteca de visualización es crucial para el rendimiento y la experiencia de usuario (UX). Aunque Google Maps es popular, React-Leaflet es la elección superior para este proyecto por su flexibilidad, ligereza y compatibilidad nativa con React.
+5.1. Selección de Biblioteca: React-Leaflet vs. Google Maps
+* Control del DOM: React-Leaflet maneja los componentes del mapa como componentes de React, permitiendo un flujo de datos unidireccional y un manejo del estado (popups abiertos, marcadores seleccionados) mucho más natural que la API imperativa de Google Maps.16
+* Personalización: Leaflet permite una personalización CSS profunda de los popups y marcadores, facilitando la implementación del diseño específico del cliente (el pin rojo vectorial) sin luchar contra iframes o shadow DOMs propietarios.
+* Rendimiento: Para visualizar miles de puntos (afiliados), Leaflet junto con plugins de clustering maneja el DOM de manera eficiente. Google Maps tiende a degradar su rendimiento más rápidamente con grandes cantidades de Markers estándar.
+5.2. Implementación del Pin Personalizado (Vector Rojo)
+El requerimiento del "pin personalizado (vector rojo adjunto)" se resolverá mediante la capacidad de Leaflet de renderizar iconos SVG.
+En lugar de usar una imagen rasterizada (PNG/JPG) que puede pixelarse en pantallas de alta densidad (retina), utilizaremos un L.DivIcon que contenga el código SVG del vector rojo. Esto permite:
+1. Escalabilidad: El icono se verá nítido a cualquier nivel de zoom.
+2. Interactividad: Podemos cambiar el color del SVG vía CSS (por ejemplo, oscurecer el rojo al hacer hover o cambiarlo a gris si el afiliado está inactivo) sin cargar nuevas imágenes.
+3. Performance: El SVG es código, pesando bytes en comparación con kilobytes de imágenes.
+
+
+TypeScript
+
+
+
+
+// Concepto de implementación del icono
+const RedPinIcon = new L.Icon({
+   iconUrl: '/assets/red-pin-vector.svg', // Ruta al asset
+   iconSize: , // Dimensiones optimizadas para no obstruir el mapa
+   iconAnchor: , // La punta del pin (centro inferior)
+   popupAnchor: [0, -40], // El popup se abre encima del pin
+   shadowUrl: '/assets/marker-shadow.png' // Sombra para dar profundidad
+});
+
+5.3. Clustering y Gestión de Densidad
+Navojoa tiene una estructura urbana densa en el centro y dispersa en la periferia. Mostrar todos los pines individuales en un zoom alejado (vista de ciudad) crearía un "océano rojo" ininteligible y bloquearía el navegador.
+La solución técnica es la implementación de Clustering (Agrupamiento) utilizando react-leaflet-markercluster.17
+* Comportamiento: A niveles de zoom bajos, los pines cercanos se agrupan en un círculo (con el color corporativo rojo) que muestra el número de afiliados en esa zona.
+* Interacción: Al hacer clic en un clúster, el mapa hace zoom automáticamente ("Spiderfy") para revelar los pines individuales.
+* Personalización: Los clústeres también utilizarán el esquema de colores del dashboard para mantener la coherencia de marca, diferenciándose de los clústeres genéricos de colores predeterminados.
+5.4. Capas del Mapa y Controles
+El componente NavojoaElectoralMap integrará un control de capas (LayersControl) que permitirá al usuario alternar entre diferentes visualizaciones tácticas:
+1. Capa Base: Un mapa de calles limpio y de alto contraste (e.g., CartoDB Voyager o OpenStreetMap estandarizado) para facilitar la lectura de etiquetas de calles y colonias.
+2. Capa Poligonal (Secciones): GeoJSON de las secciones electorales.
+   * Estilo: Borde negro delgado, relleno transparente o coloreado semitransparente (Cloropletas) basado en el % de avance de la meta de afiliación.
+   * Interacción: Clic en una sección abre un panel lateral con las estadísticas específicas de esa zona (Heatmap statistics).
+3. Capa de Puntos (Afiliados): Los pines rojos georreferenciados. Esta capa estará por encima de los polígonos (z-index superior) para asegurar que los afiliados sean siempre clicables.
+6. Integración Funcional y Flujos de Datos
+La integración del mapa en el dashboard existente no es aislada; debe "hablar" con el resto de la aplicación.
+6.1. Sincronización con Filtros Globales
+El dashboard actual probablemente tiene filtros por fecha, rol o campaña. El mapa debe reaccionar a estos filtros.
+* Si el usuario filtra por "Solo Brigadistas", el mapa debe limpiar los pines de líderes/ciudadanos y mostrar solo los brigadistas, regenerando los clústeres dinámicamente.
+* Esto se logrará pasando la data filtrada (filteredData) como prop al componente del mapa, disparando un efecto (useEffect) que actualice la capa de marcadores.
+6.2. Drill-down Analítico
+El pin rojo no es el fin, es el medio. Al hacer clic en un pin, se desplegará un Popup informativo con:
+* Nombre del Afiliado.
+* Rol (Líder, Brigadista, etc.) con su badge de color correspondiente.
+* Dirección registrada.
+* Botón de acción: "Ver Perfil Completo" o "Editar", que redirige a las vistas de detalle ya existentes en la aplicación.
+6.3. Optimización de Rendimiento (Virtualización)
+Si el número de afiliados supera los 5,000-10,000, renderizar componentes React para cada marcador puede ser lento. Para volúmenes altos, migraremos de marcadores DOM a marcadores Canvas (utilizando L.CircleMarker o renderizadores personalizados de Leaflet) que dibujan puntos en un elemento <canvas> HTML5, permitiendo manejar decenas de miles de puntos a 60 FPS.
+7. Plan de Implementación
+Fase 1: Preparación de Datos (Backend & Data Engineering)
+1. Descargar y procesar los Shapefiles del INE para Sonora/Navojoa. Convertir a GeoJSON WGS84 optimizado.
+2. Ejecutar migración SQL en Supabase para añadir campos espaciales (lat, lng).
+3. Desarrollar script de geocodificación batch para procesar las direcciones existentes históricas.
+Fase 2: Desarrollo del Componente Mapa (Frontend)
+1. Instalar dependencias (leaflet, react-leaflet, leaflet.markercluster).
+2. Crear componente base con mapa y capa de secciones (GeoJSON).
+3. Implementar capa de marcadores con el SVG del pin rojo y lógica de clustering.
+4. Conectar el mapa al contexto de datos (useData) para recibir la lista de personas.
+Fase 3: Integración y Refinamiento
+1. Integrar el mapa en GeographicAnalysisPage.tsx.
+2. Implementar la interactividad (Popups, filtrado cruzado).
+3. Configurar el trigger de geocodificación automática para nuevos registros.
+4. Realizar pruebas de rendimiento en dispositivos móviles (iPad/Android tablets) usados por coordinadores en campo.
+8. Consideraciones de Seguridad y Privacidad
+El manejo de ubicaciones exactas de ciudadanos es data sensible.
+* Obfuscación: Para usuarios de bajo nivel (si existen), se puede aplicar un "jitter" aleatorio (desplazamiento de 50-100m) a las coordenadas para mostrar la zona general sin revelar la casa exacta.
+* RBAC: Asegurar que las coordenadas y el mapa detallado solo sean accesibles vía las Row Level Security (RLS) policies de Supabase para usuarios autenticados con roles de "Administrador" o "Coordinador".
+9. Conclusión
+Esta especificación técnica transforma una necesidad operativa en una ventaja estratégica. Al georreferenciar la estructura electoral de Navojoa, no solo cumplimos con el requerimiento de "ver un mapa", sino que habilitamos una nueva dimensión de análisis: la inteligencia territorial. La combinación de la robustez de Supabase, la flexibilidad de React-Leaflet y una estrategia de datos rigurosa asegura que esta nueva funcionalidad sea escalable, performante y, sobre todo, útil para la operación política en terreno.
+Fuentes citadas
+1. Distrito electoral federal 7 de Sonora - Wikipedia, la enciclopedia libre, acceso: diciembre 22, 2025, https://es.wikipedia.org/wiki/Distrito_electoral_federal_7_de_Sonora
+2. src.zip
+3. emagar/mxDistritos: Recent Mexican electoral geography - GitHub, acceso: diciembre 22, 2025, https://github.com/emagar/mxDistritos
+4. CATALOGOS A NIVEL ENTIDAD, DISTRITO LOCAL, MUNICIPIO Y SECCION, acceso: diciembre 22, 2025, https://portalanterior.ine.mx/archivos3/portal/historico/recursos/IFE-v2/DS/DS-CG/DS-SesionesCG/CG-acuerdos/2015/11_Noviembre/CGor201511-26/CGor201511-26_ap_17_Anexo_1_Son.pdf
+5. Productos de Geografía Electoral Descargables - Instituto Nacional ... - INE, acceso: diciembre 22, 2025, https://portal.ine.mx/productos-geografia-electoral-descargables/
+6. Using GeoJSON with Leaflet - Leaflet - a JavaScript library for interactive maps, acceso: diciembre 22, 2025, https://leafletjs.com/examples/geojson/
+7. open-mexico/mexico-geojson: GeoJSON Mexican States Database provides verified geographical data for Mexican states and colonies, sourced from SEPOMEX official records. Converting KML to GeoJSON format, this repository offers reliable data for GIS applications, mapping projects, and data analysis. Perfect for developers and researchers needing accurate Mexican territorial data - GitHub, acceso: diciembre 22, 2025, https://github.com/open-mexico/mexico-geojson
+8. Step through of converting shapefile to geojson with qgis. - Gist - GitHub, acceso: diciembre 22, 2025, https://gist.github.com/YKCzoli/b7f5ff0e0f641faba0f47fa5d16c4d8d
+9. Converting shapefiles to GeoJSON - qgis - GIS StackExchange, acceso: diciembre 22, 2025, https://gis.stackexchange.com/questions/91812/converting-shapefiles-to-geojson
+10. mapshaper, acceso: diciembre 22, 2025, https://mapshaper.org/
+11. Google Maps Geocoding guide (coverage, pricing, rate limits, licensing) - Coordable, acceso: diciembre 22, 2025, https://coordable.co/provider/google-maps-geocoding-api/
+12. Mapbox vs. Google Maps API: 2026 comparison (and better options) - Radar, acceso: diciembre 22, 2025, https://radar.com/blog/mapbox-vs-google-maps-api
+13. Frequently Asked Questions - OpenCage Geocoder, acceso: diciembre 22, 2025, https://opencagedata.com/faq
+14. Geocoding API Usage and Billing - Google for Developers, acceso: diciembre 22, 2025, https://developers.google.com/maps/documentation/geocoding/usage-and-billing
+15. Mapbox vs Google Maps — What are the differences? - SoftKraft, acceso: diciembre 22, 2025, https://www.softkraft.co/mapbox-vs-google-maps/
+16. Child components | React Leaflet, acceso: diciembre 22, 2025, https://react-leaflet.js.org/docs/api-components/
+17. Leaflet/Leaflet.markercluster: Marker Clustering plugin for Leaflet - GitHub, acceso: diciembre 22, 2025, https://github.com/Leaflet/Leaflet.markercluster
+18. Custom Marker Clusters | react-leaflet-cluster - GitBook, acceso: diciembre 22, 2025, https://akursat.gitbook.io/marker-cluster/examples/custom-marker-clusters
