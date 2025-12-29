@@ -6,12 +6,12 @@ Transform the existing dashboard into a geospatial command tool by implementing 
 ## Architecture & Tech Stack
 *   **Frontend:** React (Vite) + TypeScript.
 *   **Visualization:** `react-leaflet` (Leaflet) for the map interface.
-    *   Why: Superior control over DOM for React components, efficient marker clustering, and deep CSS customization compared to Google Maps.
 *   **Clustering:** `react-leaflet-markercluster` to handle high volumes of affiliate points.
 *   **Backend/Data:** Supabase (PostgreSQL).
-*   **Geocoding:** Mapbox Geocoding API (Primary) with a "Lazy" incremental strategy.
-    *   Alternatives: Open data sources if feasible.
-    *   Storage: Coordinates (`lat`, `lng`) cached in Supabase to minimize API costs.
+*   **Geocoding:** **Geoapify** (API Service).
+    *   **Implementation:** **Supabase Edge Functions** (Deno).
+    *   **Workflow:** DB Webhook -> Edge Function -> Geoapify API -> Update DB.
+    *   **Storage:** Coordinates (`lat`, `lng`) cached in Supabase to minimize API costs.
 
 ## Functional Requirements
 
@@ -27,9 +27,10 @@ Transform the existing dashboard into a geospatial command tool by implementing 
     *   **Drill-down:** Clicking a cluster zooms in ("Spiderfy"); clicking a pin opens a detailed Popup.
 
 ### 2. Geocoding & Data Management
-*   **Lazy Geocoding:**
-    *   Trigger geocoding asynchronously when records are created/updated.
-    *   Store results: `lat`, `lng`, `geocode_status` ('pending', 'success', 'failed', 'manual'), `geocoded_at`.
+*   **Asynchronous Geocoding:**
+    *   **Trigger:** Database Webhook on `INSERT` of new records.
+    *   **Process:** Edge Function calls Geoapify with address data (Address + Colonia + "Navojoa, Sonora").
+    *   **Update:** Edge Function writes `lat`, `lng`, `geocode_status` ('success'/'failed') back to the record.
 *   **Manual Fallback:**
     *   UI capability for operators to manually "drag & drop" a pin to correct locations for records with `geocode_status = 'failed'` or low precision.
 
@@ -51,6 +52,6 @@ The system relies on the following schema extensions for `brigadistas`, `ciudada
 ## Success Criteria
 1.  Map accurately renders Navojoa electoral sections from GeoJSON.
 2.  Affiliates appear as clustered red pins at correct coordinates.
-3.  Geocoding service successfully populates `lat`/`lng` for valid addresses.
+3.  New records are automatically geocoded via Supabase Edge Function + Geoapify.
 4.  Manual correction (drag-pin) works and updates the database.
 5.  Performance remains smooth (60fps) with thousands of points using clustering.

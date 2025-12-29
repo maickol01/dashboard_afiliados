@@ -191,7 +191,7 @@ const SectionStackedBarChart: React.FC<SectionStackedBarChartProps> = ({
       </div>
 
       {/* Chart */}
-      <div className="w-full" style={{ height: `${Math.max(isMobile ? 300 : 400, chartData.length * (isMobile ? 30 : 40))}px` }}>
+      <div className="w-full" style={{ height: `${Math.max(isMobile ? 300 : 400, chartData.length * (isMobile ? 30 : 40))}px`, minHeight: '300px' }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={chartData.slice(0, isMobile ? 15 : chartData.length)}

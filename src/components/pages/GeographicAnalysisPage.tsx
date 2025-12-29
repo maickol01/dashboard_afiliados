@@ -8,19 +8,29 @@ import { useMobileDetection } from '../../hooks/useMobileDetection';
 // Import the three main Navojoa components
 import KPICards from '../analytics/navojoa/KPICards';
 import SectionVerticalBarChart from '../analytics/navojoa/SectionVerticalBarChart';
-import SectionHeatMap from '../analytics/navojoa/SectionHeatMap';
+import NavojoaMap from '../analytics/navojoa/NavojoaMap';
 
 const GeographicAnalysisPage: React.FC = () => {
   const { isMobile } = useMobileDetection();
   
+  // State for filtering
+  const [selectedRole, setSelectedRole] = useState<string>('all');
+
   // Get data from useData hook
   const {
     data: hierarchicalData,
     analytics,
     loading: dataLoading,
     error: dataError,
-    refetchData
+    refetchData,
+    filterByRole
   } = useData(null);
+
+  // Memoize filtered data for the map
+  const filteredHierarchicalData = React.useMemo(() => {
+    if (selectedRole === 'all') return hierarchicalData;
+    return filterByRole(selectedRole);
+  }, [hierarchicalData, selectedRole, filterByRole]);
 
   // State for Navojoa electoral data
   const [navojoaData, setNavojoaData] = useState<NavojoaElectoralAnalytics | null>(null);
@@ -174,15 +184,30 @@ const GeographicAnalysisPage: React.FC = () => {
             </p>
           )}
         </div>
-        <button
-          onClick={handleRefresh}
-          disabled={loading}
-          className={`inline-flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${isMobile ? 'text-xs px-2 py-1' : ''}`}
-          title="Actualizar datos"
-        >
-          <RefreshCw className={`${loading ? 'animate-spin' : ''} ${isMobile ? 'h-3 w-3' : 'h-4 w-4 mr-2'}`} />
-          {!isMobile && 'Actualizar'}
-        </button>
+        <div className="flex items-center gap-2">
+          {!isMobile && (
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              className="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2"
+            >
+              <option value="all">Todos los Roles</option>
+              <option value="lider">Líderes</option>
+              <option value="brigadista">Brigadistas</option>
+              <option value="movilizador">Movilizadores</option>
+              <option value="ciudadano">Ciudadanos</option>
+            </select>
+          )}
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className={`inline-flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${isMobile ? 'text-xs px-2 py-1' : ''}`}
+            title="Actualizar datos"
+          >
+            <RefreshCw className={`${loading ? 'animate-spin' : ''} ${isMobile ? 'h-3 w-3' : 'h-4 w-4 mr-2'}`} />
+            {!isMobile && 'Actualizar'}
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards Component */}
@@ -198,12 +223,26 @@ const GeographicAnalysisPage: React.FC = () => {
         loading={loading}
       />
 
-      {/* Section Heat Map Component */}
-      <SectionHeatMap 
-        sectionData={navojoaData?.sectionData || []}
-        colorScale="green"
-        loading={loading}
-      />
+      {/* Interactive Navojoa Map Component */}
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className={`p-4 border-b border-gray-100 flex items-center justify-between ${isMobile ? 'flex-col items-start gap-2' : ''}`}>
+          <h3 className="font-bold text-gray-800 flex items-center gap-2">
+            📍 Mapa Interactivo de Navojoa
+          </h3>
+          <div className="flex gap-2">
+            <span className="flex items-center gap-1 text-[10px] text-gray-500">
+              <span className="w-2 h-2 rounded-full bg-red-400"></span> Afiliados
+            </span>
+            <span className="flex items-center gap-1 text-[10px] text-gray-500">
+              <span className="w-2 h-2 rounded-full bg-green-600 opacity-40"></span> Densidad Alta
+            </span>
+          </div>
+        </div>
+        <NavojoaMap 
+          data={filteredHierarchicalData}
+          height={isMobile ? '400px' : '600px'}
+        />
+      </div>
 
       {/* Data Quality Indicator */}
       {navojoaData && !loading && (

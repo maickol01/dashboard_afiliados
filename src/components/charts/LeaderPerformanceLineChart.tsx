@@ -244,7 +244,7 @@ const LeaderPerformanceLineChart: React.FC<LeaderPerformanceLineChartProps> = ({
           </div>
         </div>
       </div>
-      <div className="w-full h-[400px]">
+      <div className="w-full h-[400px]" style={{ minHeight: '400px' }}>
         <ResponsiveContainer width="100%" height="100%" debounce={200}>
           <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
             <defs>

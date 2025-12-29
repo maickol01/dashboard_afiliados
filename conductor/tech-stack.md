@@ -9,9 +9,12 @@
 ## Data & Visualization
 - **Recharts:** For data visualization (charts and graphs).
 - **Lucide React:** Icon library.
+- **Leaflet / React-Leaflet:** For interactive maps.
 
 ## Backend & Integration
 - **Supabase:** Backend-as-a-Service for database (PostgreSQL), authentication, and real-time updates.
+- **Supabase Edge Functions (Deno):** Serverless compute for geocoding logic.
+- **Geoapify:** Geocoding API service.
 
 ## Testing & Quality
 - **Vitest:** Testing framework.
