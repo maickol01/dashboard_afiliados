@@ -1559,6 +1559,57 @@ export class DataService {
     });
   }
 
+  /**
+   * Updates a person's geolocation data directly in the table
+   */
+  static async updateGeolocatedPerson(personId: string, role: string, data: Partial<Person>): Promise<void> {
+    return this.circuitBreaker.execute(async () => {
+      return withDatabaseRetry(async () => {
+        const tableName = this.getTableName(role);
+        
+        const { error } = await supabase
+          .from(tableName)
+          .update({
+            lat: data.lat,
+            lng: data.lng,
+            geocode_status: data.geocode_status,
+            geocoded_at: data.geocoded_at
+          })
+          .eq('id', personId);
+
+        if (error) {
+          throw new DatabaseError(`Failed to update geolocation for ${role}`, error.code);
+        }
+
+        await this.invalidateDataCache();
+      });
+    });
+  }
+
+  /**
+   * Fetches all people with successful geocoding
+   */
+  static async fetchGeolocatedPeople(): Promise<Person[]> {
+    const allData = await this.getAllHierarchicalData();
+    const flatData = this.getAllPeopleFlat(allData);
+    
+    return flatData.filter(p => 
+      p.lat !== undefined && 
+      p.lng !== undefined && 
+      (p.geocode_status === 'success' || p.geocode_status === 'manual')
+    );
+  }
+
+  private static getTableName(role: string): string {
+    switch (role) {
+      case 'lider': return 'lideres';
+      case 'brigadista': return 'brigadistas';
+      case 'movilizador': return 'movilizadores';
+      case 'ciudadano': return 'ciudadanos';
+      default: throw new Error(`Invalid role: ${role}`);
+    }
+  }
+
   // Enhanced health check with cache metrics
   static async enhancedHealthCheck(): Promise<{
     database: Awaited<ReturnType<typeof DataService.healthCheck>>

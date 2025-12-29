@@ -5,9 +5,13 @@ import HierarchyPage from './components/hierarchy/HierarchyPage';
 import { GeographicAnalysisPage, DataQualityPage } from './components/pages';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { DataErrorBoundary } from './components/common/DataErrorBoundary';
+import { useGeocodingTrigger } from './hooks/useGeocodingTrigger';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('analytics');
+  
+  // Enable background geocoding for new/updated records
+  useGeocodingTrigger(true);
 
   const renderPage = () => {
     switch (currentPage) {
