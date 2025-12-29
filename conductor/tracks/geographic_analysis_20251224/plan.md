@@ -4,7 +4,7 @@ This plan outlines the steps to implement the interactive Navojoa map for geogra
 
 ## Phase 1: Data Engineering & Schema
 - [x] Task: Verify and process `SECCION-Navojoa.json` (Ensure WGS84 projection and optimize size if needed) [ef578da]
-- [ ] Task: Create/Verify Supabase migration for geospatial columns (`lat`, `lng`, `geocode_status`, `geocoded_at`) on `lideres`, `brigadistas`, `movilizadores`, `ciudadanos`
+- [x] Task: Create/Verify Supabase migration for geospatial columns (`lat`, `lng`, `geocode_status`, `geocoded_at`) on `lideres`, `brigadistas`, `movilizadores`, `ciudadanos` [64cfda7]
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Data Engineering & Schema'
 
 ## Phase 2: Backend & Geocoding Service
