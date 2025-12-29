@@ -21,6 +21,12 @@ export interface Person {
   numero_cel?: string;
   num_verificado: boolean;
 
+  // Campos de geolocalización
+  lat?: number;
+  lng?: number;
+  geocode_status?: 'pending' | 'success' | 'failed' | 'manual';
+  geocoded_at?: Date | string;
+
   // Campos específicos por rol
   lider_id?: string; // Para brigadistas
   brigadista_id?: string; // Para movilizadores
