@@ -150,7 +150,7 @@ const LeaderPerformanceLineChart: React.FC<LeaderPerformanceLineChartProps> = ({
     return (
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
-        <div className="h-[400px] flex items-center justify-center text-gray-500">
+        <div className="h-[400px]" style={{ minHeight: '400px' }}>
           No hay datos de rendimiento de líderes para el período seleccionado.
         </div>
       </div>
@@ -244,7 +244,7 @@ const LeaderPerformanceLineChart: React.FC<LeaderPerformanceLineChartProps> = ({
           </div>
         </div>
       </div>
-      <div className="w-full h-[400px]" style={{ minHeight: '400px' }}>
+      <div className="w-full h-96 min-h-[400px]">
         <ResponsiveContainer width="100%" height="100%" debounce={200}>
           <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
             <defs>

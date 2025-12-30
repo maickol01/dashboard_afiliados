@@ -4,11 +4,13 @@ import { useData } from '../../hooks/useData';
 import { NavojoaElectoralAnalytics } from '../../types/navojoa-electoral';
 import { navojoaElectoralService } from '../../services/navojoaElectoralService';
 import { useMobileDetection } from '../../hooks/useMobileDetection';
+import { DataService } from '../../services/dataService';
 
 // Import the three main Navojoa components
 import KPICards from '../analytics/navojoa/KPICards';
 import SectionVerticalBarChart from '../analytics/navojoa/SectionVerticalBarChart';
 import NavojoaMap from '../analytics/navojoa/NavojoaMap';
+import SectionHeatMap from '../analytics/navojoa/SectionHeatMap';
 
 const GeographicAnalysisPage: React.FC = () => {
   const { isMobile } = useMobileDetection();
@@ -23,14 +25,33 @@ const GeographicAnalysisPage: React.FC = () => {
     loading: dataLoading,
     error: dataError,
     refetchData,
-    filterByRole
   } = useData(null);
 
-  // Memoize filtered data for the map
-  const filteredHierarchicalData = React.useMemo(() => {
-    if (selectedRole === 'all') return hierarchicalData;
-    return filterByRole(selectedRole);
-  }, [hierarchicalData, selectedRole, filterByRole]);
+  // Memoize the flattened and filtered data for the map
+  const mapData = React.useMemo(() => {
+    if (!hierarchicalData) {
+        console.log('[DEBUG] No hierarchicalData available');
+        return [];
+    }
+    
+    const flatData = DataService.getAllPeopleFlat(hierarchicalData);
+    const julio = flatData.find(p => p.nombre.includes('JULIO CESAR'));
+    
+    console.log('[DEBUG] DataService.getAllPeopleFlat result:', {
+        total: flatData.length,
+        julioFound: !!julio,
+        julioData: julio ? { role: julio.role, lat: julio.lat, lng: julio.lng, status: julio.geocode_status } : 'N/A'
+    });
+    
+    if (selectedRole === 'all') {
+        console.log('[DEBUG] Returning all data');
+        return flatData;
+    }
+    
+    const filtered = flatData.filter(p => p.role === selectedRole);
+    console.log(`[DEBUG] Filtering by role: ${selectedRole}. Result count: ${filtered.length}`);
+    return filtered;
+  }, [hierarchicalData, selectedRole]);
 
   // State for Navojoa electoral data
   const [navojoaData, setNavojoaData] = useState<NavojoaElectoralAnalytics | null>(null);
@@ -210,19 +231,6 @@ const GeographicAnalysisPage: React.FC = () => {
         </div>
       </div>
 
-      {/* KPI Cards Component */}
-      <KPICards 
-        sectionData={navojoaData?.sectionData || []}
-        loading={loading}
-      />
-
-      {/* Section Vertical Bar Chart Component */}
-      <SectionVerticalBarChart 
-        sectionData={navojoaData?.sectionData || []}
-        onSectionClick={handleSectionClick}
-        loading={loading}
-      />
-
       {/* Interactive Navojoa Map Component */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className={`p-4 border-b border-gray-100 flex items-center justify-between ${isMobile ? 'flex-col items-start gap-2' : ''}`}>
@@ -239,10 +247,32 @@ const GeographicAnalysisPage: React.FC = () => {
           </div>
         </div>
         <NavojoaMap 
-          data={filteredHierarchicalData}
+          data={mapData}
           height={isMobile ? '400px' : '600px'}
         />
       </div>
+
+      {/* KPI Cards Component */}
+      <KPICards 
+        sectionData={navojoaData?.sectionData || []}
+        loading={loading}
+      />
+
+      {/* Section Vertical Bar Chart Component */}
+      <SectionVerticalBarChart 
+        sectionData={navojoaData?.sectionData || []}
+        onSectionClick={handleSectionClick}
+        loading={loading}
+      />
+
+      {/* Section Heat Map Component */}
+      <SectionHeatMap 
+        sectionData={navojoaData?.sectionData || []}
+        colorScale="green"
+        loading={loading}
+      />
+
+      {/* Data Quality Indicator */}
 
       {/* Data Quality Indicator */}
       {navojoaData && !loading && (

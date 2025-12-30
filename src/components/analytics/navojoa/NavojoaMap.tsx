@@ -94,7 +94,8 @@ export const NavojoaMap: React.FC<NavojoaMapProps> = ({
             
             <SectionDetailPanel section={selectedSection} onClose={() => setSelectedSection(null)} />
             
-            <div className="absolute top-4 left-3 z-[1000] flex flex-col gap-2">
+            {/* Botón de Modo Edición en la esquina inferior izquierda */}
+            <div className="absolute bottom-4 left-3 z-[1000] flex flex-col gap-2">
                 <button
                     onClick={() => setIsEditable(!isEditable)}
                     className={`p-2 rounded-md shadow-md transition-colors ${

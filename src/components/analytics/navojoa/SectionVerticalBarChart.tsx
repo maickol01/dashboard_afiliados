@@ -633,7 +633,7 @@ Sección ${section.sectionNumber} (${section.colonia || 'Sin colonia'})
       </div>
 
       {/* Vertical Bar Chart */}
-      <div className="w-full" style={{ height: isMobile ? '300px' : '400px', minHeight: '300px' }}>
+      <div className="w-full h-96 min-h-[400px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={chartData}

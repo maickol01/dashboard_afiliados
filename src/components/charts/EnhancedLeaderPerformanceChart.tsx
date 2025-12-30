@@ -102,7 +102,7 @@ const EnhancedLeaderPerformanceChart: React.FC<EnhancedLeaderPerformanceChartPro
     return (
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
-        <div className="h-[550px] flex items-center justify-center text-gray-500">
+        <div className="h-[550px]" style={{ minHeight: '550px' }}>
           No hay datos de rendimiento disponibles para la selección actual.
         </div>
       </div>
@@ -235,7 +235,7 @@ const EnhancedLeaderPerformanceChart: React.FC<EnhancedLeaderPerformanceChartPro
         </div>
       </div>
       
-      <div className="w-full h-[600px] overflow-x-auto" style={{ minHeight: '600px' }}>
+      <div className="w-full h-[600px] min-h-[600px] overflow-x-auto">
         <ResponsiveContainer width="100%" height="100%" debounce={200} minWidth={Math.max(600, chartData.length * 60)}>
           <BarChart 
             data={chartData} 

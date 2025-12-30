@@ -10,7 +10,7 @@ const CustomBarChart: React.FC<BarChartProps> = ({ data, title }) => {
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
-      <div className="w-full h-[300px] sm:h-[350px] lg:h-[400px]" style={{ minHeight: '300px' }}>
+      <div className="w-full h-96 min-h-[400px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" />

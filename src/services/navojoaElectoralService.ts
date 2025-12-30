@@ -72,19 +72,6 @@ export class NavojoaElectoralService implements SectionDataTransformer {
         // Flatten all people and group by section
         const allPeople = this.getAllPeopleFlat(hierarchicalData);
 
-        // Debug: Log section data processing
-        console.log('🔍 Procesando datos de secciones...');
-        console.log('🔍 Total personas en datos jerárquicos:', allPeople.length);
-
-        // Debug: Check how many people have section data
-        const peopleWithSections = allPeople.filter(p => p.seccion && p.seccion !== 'Sin sección' && p.seccion.trim() !== '');
-        console.log('🔍 Personas con sección válida:', peopleWithSections.length);
-
-        if (peopleWithSections.length > 0) {
-            const uniqueSections = [...new Set(peopleWithSections.map(p => p.seccion))];
-            console.log('🔍 Secciones encontradas:', uniqueSections);
-        }
-
         allPeople.forEach(person => {
             const section = person.seccion || 'Sin sección';
 
@@ -115,8 +102,6 @@ export class NavojoaElectoralService implements SectionDataTransformer {
             }
         });
 
-        console.log('🔍 Mapa de secciones procesado:', Array.from(sectionMap.entries()));
-
         // Convert map to NavojoaElectoralSection array
         const sectionData: NavojoaElectoralSection[] = [];
         const now = new Date();
@@ -138,15 +123,6 @@ export class NavojoaElectoralService implements SectionDataTransformer {
                 });
             }
         });
-
-        console.log('🔍 Datos finales de secciones:', sectionData.map(s => ({
-            seccion: s.sectionNumber,
-            total: s.totalRegistrations,
-            lideres: s.lideres,
-            brigadistas: s.brigadistas,
-            movilizadores: s.movilizadores,
-            ciudadanos: s.ciudadanos
-        })));
 
         // Sort by total registrations descending
         return sectionData.sort((a, b) => b.totalRegistrations - a.totalRegistrations);

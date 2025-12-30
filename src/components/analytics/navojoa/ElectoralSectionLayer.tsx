@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { GeoJSON, Marker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { navojoaElectoralService } from '../../../services/navojoaElectoralService';
@@ -52,13 +52,12 @@ const MapZoomHandler: React.FC<{ setZoom: (zoom: number) => void }> = ({ setZoom
     return null;
 };
 
-
 // --- MAIN COMPONENT ---
 export const ElectoralSectionLayer: React.FC<ElectoralSectionLayerProps> = ({ data, onSectionSelect }) => {
     const [geoJsonData, setGeoJsonData] = useState<any>(null);
     const [sectionStats, setSectionStats] = useState<Map<string, NavojoaElectoralSection>>(new Map());
-    const [sectionLabels, setSectionLabels] = useState<{ num: string, center: [number, number] }[]>([]);
-    
+    const [sectionLabels, setSectionLabels] = useState<{ num: string, center: [number, number], area: number }[]>([]);
+
     const [highlightedFeature, setHighlightedFeature] = useState<any>(null);
     const [selectedFeature, setSelectedFeature] = useState<any>(null);
     const [zoomLevel, setZoomLevel] = useState<number>(13);
@@ -75,13 +74,17 @@ export const ElectoralSectionLayer: React.FC<ElectoralSectionLayerProps> = ({ da
                 const geojson = await response.json();
                 setGeoJsonData(geojson);
 
-                // 2. Create labels with centroids
+                // 2. Create labels with centroids and area proxy
                 const labels = geojson.features.map((feature: any) => {
-                    const polygon = L.geoJSON(feature);
-                    const center = polygon.getBounds().getCenter();
+                    const layer = L.geoJSON(feature);
+                    const bounds = layer.getBounds();
+                    const center = bounds.getCenter();
+                    // Use the diagonal distance of the bounding box as a proxy for size
+                    const area = bounds.getSouthWest().distanceTo(bounds.getNorthEast());
                     return {
                         num: feature.properties.SECCION?.toString(),
-                        center: [center.lat, center.lng] as [number, number]
+                        center: [center.lat, center.lng] as [number, number],
+                        area,
                     };
                 });
                 setSectionLabels(labels);
@@ -91,7 +94,7 @@ export const ElectoralSectionLayer: React.FC<ElectoralSectionLayerProps> = ({ da
                 if (!hierarchicalData) {
                     hierarchicalData = await DataService.getAllHierarchicalData();
                 }
-                
+
                 const sections = navojoaElectoralService.transformHierarchicalDataToSections(hierarchicalData);
                 const statsMap = new Map(sections.map(s => [s.sectionNumber.toString(), s]));
                 setSectionStats(statsMap);
@@ -125,35 +128,41 @@ export const ElectoralSectionLayer: React.FC<ElectoralSectionLayerProps> = ({ da
             }
         });
     }, [onSectionSelect, sectionStats, selectedFeature]);
-    
+
+    // --- ADAPTIVE ZOOM THRESHOLD ---
+    const getZoomThreshold = (area: number): number => {
+        // Adjust these thresholds based on observed area values
+        if (area > 4000) return 10; // Very large sections (visible 2 levels earlier)
+        if (area > 1000) return 13; // Large sections (reverted to original value)
+        if (area > 250) return 13;  // Medium sections
+        return 13;                  // Small sections
+    };
+
     // --- RENDER LOGIC ---
     if (loading || !geoJsonData) {
-        return null; // Or a loading spinner
+        return null;
     }
 
     return (
         <>
             <MapZoomHandler setZoom={setZoomLevel} />
-            
-            {/* Main layer with all sections */}
-            <GeoJSON 
+
+            <GeoJSON
                 key="sections-base"
-                data={geoJsonData} 
+                data={geoJsonData}
                 style={STYLE_DEFAULTS}
                 onEachFeature={onEachFeature}
             />
 
-            {/* Hover highlight layer */}
             {highlightedFeature && (
                 <GeoJSON
                     key={`highlight-${highlightedFeature.properties.SECCION}`}
                     data={highlightedFeature}
                     style={STYLE_HIGHLIGHT}
-                    interactive={false} 
+                    interactive={false}
                 />
             )}
 
-            {/* Click selection layer */}
             {selectedFeature && (
                 <GeoJSON
                     key={`selected-${selectedFeature.properties.SECCION}`}
@@ -162,19 +171,21 @@ export const ElectoralSectionLayer: React.FC<ElectoralSectionLayerProps> = ({ da
                     interactive={false}
                 />
             )}
-            
-            {/* Section number labels (visible on zoom) */}
-            {zoomLevel > 13 && sectionLabels.map(label => (
-                <Marker 
-                    key={`label-${label.num}`}
-                    position={label.center}
-                    interactive={false}
-                    icon={L.divIcon({
-                        className: 'leaflet-section-label',
-                        html: `<span class="bg-white/70 px-1 py-0.5 rounded text-xs font-bold text-primary tracking-tighter">${label.num}</span>`
-                    })}
-                />
-            ))}
+
+            {/* Adaptive Section Labels */}
+            {sectionLabels
+                .filter(label => zoomLevel >= getZoomThreshold(label.area))
+                .map(label => (
+                    <Marker
+                        key={`label-${label.num}`}
+                        position={label.center}
+                        interactive={false}
+                        icon={L.divIcon({
+                            className: 'leaflet-section-label',
+                            html: `<span class="bg-white/80 px-1 py-0.5 rounded-sm text-xs font-bold text-primary tracking-tighter shadow">${label.num}</span>`
+                        })}
+                    />
+                ))}
         </>
     );
 };

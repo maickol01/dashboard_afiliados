@@ -26,14 +26,20 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'No address found' }), { status: 400 })
     }
 
-    // Construir la dirección completa para Navojoa
-    const address = `${record.direccion}, ${record.colonia || ''}, ${record.municipio || 'Navojoa'}, ${record.entidad || 'Sonora'}, Mexico`
-    
-    console.log(`Geocodificando: ${address} para tabla ${table}`)
+    // --- LÓGICA MODIFICADA ---
+    // Limpiar la dirección: quitar la "C " inicial si existe.
+    const cleanDireccion = record.direccion.startsWith('C ') 
+      ? record.direccion.substring(2) 
+      : record.direccion;
 
-    // Llamada a Geoapify
+    // Construir una dirección más completa incluyendo la colonia
+    const address = `${cleanDireccion}, ${record.colonia || ''}, ${record.municipio || 'Navojoa'}, ${record.entidad || 'Sonora'}`
+    
     const query = encodeURIComponent(address)
     const geoUrl = `https://api.geoapify.com/v1/geocode/search?text=${query}&limit=1&filter=rect:-109.84,26.50,-109.03,27.38&apiKey=${GEOAPIFY_API_KEY}`
+    
+    console.log(`[DEBUG] Geoapify URL (con colonia): ${geoUrl}`)
+    // --- FIN DE LA LÓGICA MODIFICADA ---
     
     const geoResponse = await fetch(geoUrl)
     const geoData = await geoResponse.json()

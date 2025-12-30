@@ -184,6 +184,12 @@ export class DataService {
       numero_cel: dbRecord.numero_cel || undefined,
       num_verificado: dbRecord.num_verificado,
 
+      // Campos de geolocalización
+      lat: dbRecord.lat,
+      lng: dbRecord.lng,
+      geocode_status: dbRecord.geocode_status as any,
+      geocoded_at: dbRecord.geocoded_at ? new Date(dbRecord.geocoded_at) : undefined,
+
       // Campos específicos por rol
       lider_id: 'lider_id' in dbRecord ? dbRecord.lider_id : undefined,
       brigadista_id: 'brigadista_id' in dbRecord ? dbRecord.brigadista_id : undefined,
@@ -817,7 +823,7 @@ export class DataService {
   }
 
   // Helper methods
-  private static getAllPeopleFlat(hierarchicalData: Person[]): Person[] {
+  static getAllPeopleFlat(hierarchicalData: Person[]): Person[] {
     const result: Person[] = []
 
     const flatten = (people: Person[]) => {

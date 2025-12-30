@@ -104,7 +104,7 @@ const CustomLineChartComponent: React.FC<LineChartProps> = ({ registrations }) =
         <div className="mt-4 sm:mt-0">{headerControls}</div>
       </div>
 
-      <div className="w-full h-[400px]" style={{ minHeight: '400px' }}>
+      <div className="w-full h-96 min-h-[400px]">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
