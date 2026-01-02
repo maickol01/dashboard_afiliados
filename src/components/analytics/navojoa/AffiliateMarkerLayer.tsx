@@ -31,14 +31,12 @@ const createClusterCustomIcon = function (cluster: any) {
 
 
 export const AffiliateMarkerLayer: React.FC<AffiliateMarkerLayerProps> = ({ data, isEditable = false }) => {
-    // La data ya viene aplanada, solo la filtramos
     const displayPeople = useMemo(() => {
-        return data.filter(p => {
-            const hasCoords = p.lat != null && p.lng != null;
-            const isSuccess = p.geocode_status === 'success' || p.geocode_status === 'manual' || p.geocode_status === 'complete';
-            return hasCoords && (isEditable || isSuccess);
-        });
-    }, [data, isEditable]);
+        console.log(`[AffiliateMarkerLayer] Received data with length: ${data.length}`);
+        const peopleWithCoords = data.filter(p => p.lat != null && p.lng != null);
+        console.log(`[AffiliateMarkerLayer] Rendering ${peopleWithCoords.length} displayable people with coordinates.`);
+        return peopleWithCoords;
+    }, [data]);
 
     const handleDragEnd = async (personId: string, role: string, e: any) => {
         const position = e.target.getLatLng();

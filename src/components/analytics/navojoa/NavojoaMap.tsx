@@ -1,10 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, LayersControl, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { ElectoralSectionLayer } from './ElectoralSectionLayer';
 import { AffiliateMarkerLayer } from './AffiliateMarkerLayer';
 import { Person, NavojoaElectoralSection } from '../../../types';
-import { X, Users, MapPin } from 'lucide-react';
+import { X, Users, MapPin, Search } from 'lucide-react';
 
 // Fix for default Leaflet icon issues with Vite/Webpack
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -27,6 +27,11 @@ interface NavojoaMapProps {
     data?: Person[];
     height?: string;
     isEditable?: boolean;
+    searchTerm?: string;
+    onSearchChange?: (term: string) => void;
+    allPeople?: Person[];
+    selectedRole?: string;
+    onRoleChange?: (role: string) => void;
 }
 
 const MapController = () => {
@@ -81,10 +86,103 @@ const SectionDetailPanel: React.FC<{ section: NavojoaElectoralSection | null, on
     );
 };
 
+const SearchOverlay: React.FC<{ 
+    searchTerm: string, 
+    onSearchChange: (term: string) => void,
+    allPeople: Person[]
+}> = ({ searchTerm, onSearchChange, allPeople }) => {
+    // ... (Existing implementation)
+    const [suggestions, setSuggestions] = useState<Person[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const wrapperRef = useRef<HTMLDivElement>(null);
+
+    // Filter suggestions when searchTerm changes
+    useEffect(() => {
+        if (!searchTerm || searchTerm.length < 2) {
+            setSuggestions([]);
+            return;
+        }
+
+        const term = searchTerm.toLowerCase();
+        // Limit to 8 suggestions for performance and UI fit
+        const matches = allPeople
+            .filter(p => p.nombre.toLowerCase().includes(term) || (p.clave_electoral && p.clave_electoral.toLowerCase().includes(term)))
+            .slice(0, 8);
+        
+        setSuggestions(matches);
+        setShowSuggestions(true);
+    }, [searchTerm, allPeople]);
+
+    // Click outside to close
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+                setShowSuggestions(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [wrapperRef]);
+
+    const handleSelect = (person: Person) => {
+        onSearchChange(person.nombre);
+        setShowSuggestions(false);
+    };
+
+    return (
+        <div ref={wrapperRef} className="absolute top-4 left-14 z-[1000] w-72">
+            <div className="relative">
+                <input
+                    type="text"
+                    placeholder="Buscar afiliado..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                        onSearchChange(e.target.value);
+                        setShowSuggestions(true);
+                    }}
+                    className="w-full bg-white/95 backdrop-blur-sm border border-gray-300 text-gray-700 text-sm rounded-lg shadow-md focus:ring-primary focus:border-primary block p-2 pl-9"
+                />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                {searchTerm && (
+                    <button 
+                        onClick={() => onSearchChange('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                )}
+            </div>
+            
+            {showSuggestions && suggestions.length > 0 && (
+                <ul className="absolute z-[1001] w-full bg-white mt-1 rounded-lg shadow-lg border border-gray-100 max-h-60 overflow-y-auto">
+                    {suggestions.map(person => (
+                        <li 
+                            key={person.id}
+                            onClick={() => handleSelect(person)}
+                            className="px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm border-b border-gray-50 last:border-0"
+                        >
+                            <div className="font-medium text-gray-800">{person.nombre}</div>
+                            <div className="text-xs text-gray-500 flex justify-between">
+                                <span>{person.role}</span>
+                                {person.clave_electoral && <span>{person.clave_electoral}</span>}
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+};
+
 export const NavojoaMap: React.FC<NavojoaMapProps> = ({ 
     data = [], 
     height = '600px',
-    isEditable: initialEditable = false
+    isEditable: initialEditable = false,
+    searchTerm = '',
+    onSearchChange = () => {},
+    allPeople = [],
+    selectedRole = 'all',
+    onRoleChange = () => {}
 }) => {
     const [isEditable, setIsEditable] = React.useState(initialEditable);
     const [selectedSection, setSelectedSection] = React.useState<NavojoaElectoralSection | null>(null);
@@ -93,6 +191,27 @@ export const NavojoaMap: React.FC<NavojoaMapProps> = ({
         <div style={{ height, width: '100%', position: 'relative' }} className="rounded-xl overflow-hidden border border-gray-200 shadow-sm">
             
             <SectionDetailPanel section={selectedSection} onClose={() => setSelectedSection(null)} />
+            
+            {/* Search Overlay */}
+            <SearchOverlay 
+                searchTerm={searchTerm} 
+                onSearchChange={onSearchChange} 
+                allPeople={allPeople} 
+            />
+
+            {/* Role Filter Overlay (New) */}
+            <div className="absolute top-16 left-14 z-[1000] w-40">
+                <select
+                    value={selectedRole}
+                    onChange={(e) => onRoleChange(e.target.value)}
+                    className="w-full bg-white/95 backdrop-blur-sm border border-gray-300 text-gray-700 text-xs rounded-lg shadow-md focus:ring-primary focus:border-primary block p-2"
+                >
+                    <option value="all">Todos los Roles</option>
+                    <option value="lider">Líderes</option>
+                    <option value="brigadista">Brigadistas</option>
+                    <option value="movilizador">Movilizadores</option>
+                </select>
+            </div>
             
             {/* Botón de Modo Edición en la esquina inferior izquierda */}
             <div className="absolute bottom-4 left-3 z-[1000] flex flex-col gap-2">
@@ -150,7 +269,7 @@ export const NavojoaMap: React.FC<NavojoaMapProps> = ({
                     </LayersControl.BaseLayer>
 
                     <LayersControl.Overlay checked name="Secciones Electorales">
-                        <ElectoralSectionLayer data={data} onSectionSelect={setSelectedSection} />
+                        <ElectoralSectionLayer data={data} onSectionSelect={setSelectedSection} isEditable={isEditable} />
                     </LayersControl.Overlay>
 
                     <LayersControl.Overlay checked name="Afiliados">

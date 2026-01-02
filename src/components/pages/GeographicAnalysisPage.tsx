@@ -17,6 +17,7 @@ const GeographicAnalysisPage: React.FC = () => {
   
   // State for filtering
   const [selectedRole, setSelectedRole] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   // Get data from useData hook
   const {
@@ -27,31 +28,62 @@ const GeographicAnalysisPage: React.FC = () => {
     refetchData,
   } = useData(null);
 
-  // Memoize the flattened and filtered data for the map
+  // Memoize the flattened data (all people)
+  const flatData = React.useMemo(() => {
+    if (!hierarchicalData) return [];
+    return DataService.getAllPeopleFlat(hierarchicalData);
+  }, [hierarchicalData]);
+
+  // Memoize the filtered data for the map view
   const mapData = React.useMemo(() => {
-    if (!hierarchicalData) {
-        console.log('[DEBUG] No hierarchicalData available');
-        return [];
+    console.log(`[MAP FILTER] Recalculating... Search: "${searchTerm}", Role: "${selectedRole}"`);
+
+    // Helper to collect all descendant IDs recursively
+    const collectHierarchyIds = (people: Person[], idSet: Set<string>) => {
+      people.forEach(p => {
+        idSet.add(p.id);
+        if (p.children && p.children.length > 0) {
+          collectHierarchyIds(p.children, idSet);
+        }
+      });
+    };
+
+    // 1. Search term takes priority
+    if (searchTerm.trim() !== '') {
+        const term = searchTerm.toLowerCase();
+        const rootMatches = flatData.filter(p => 
+            p.nombre.toLowerCase().includes(term) ||
+            (p.clave_electoral && p.clave_electoral.toLowerCase().includes(term))
+        );
+        
+        console.log(`[MAP FILTER] Found ${rootMatches.length} search matches.`);
+        const relevantIds = new Set<string>();
+        collectHierarchyIds(rootMatches, relevantIds);
+        
+        const finalData = flatData.filter(p => relevantIds.has(p.id));
+        console.log(`[MAP FILTER] Returning ${finalData.length} people based on search.`);
+        return finalData;
     }
-    
-    const flatData = DataService.getAllPeopleFlat(hierarchicalData);
-    const julio = flatData.find(p => p.nombre.includes('JULIO CESAR'));
-    
-    console.log('[DEBUG] DataService.getAllPeopleFlat result:', {
-        total: flatData.length,
-        julioFound: !!julio,
-        julioData: julio ? { role: julio.role, lat: julio.lat, lng: julio.lng, status: julio.geocode_status } : 'N/A'
-    });
-    
-    if (selectedRole === 'all') {
-        console.log('[DEBUG] Returning all data');
-        return flatData;
+
+    // 2. If no search, use role filter
+    if (selectedRole !== 'all') {
+        const rootMatches = flatData.filter(p => p.role === selectedRole);
+        console.log(`[MAP FILTER] Found ${rootMatches.length} matches for role "${selectedRole}".`);
+
+        const relevantIds = new Set<string>();
+        collectHierarchyIds(rootMatches, relevantIds);
+        
+        const finalData = flatData.filter(p => relevantIds.has(p.id));
+        console.log(`[MAP FILTER] Returning ${finalData.length} people based on role filter.`);
+        return finalData;
     }
-    
-    const filtered = flatData.filter(p => p.role === selectedRole);
-    console.log(`[DEBUG] Filtering by role: ${selectedRole}. Result count: ${filtered.length}`);
-    return filtered;
-  }, [hierarchicalData, selectedRole]);
+
+    // 3. Default view if no search and role is 'all' - show everyone
+    const finalData = flatData;
+    console.log(`[MAP FILTER] Returning ${finalData.length} people for default view (all roles).`);
+    return finalData;
+
+  }, [flatData, selectedRole, searchTerm]);
 
   // State for Navojoa electoral data
   const [navojoaData, setNavojoaData] = useState<NavojoaElectoralAnalytics | null>(null);
@@ -216,7 +248,6 @@ const GeographicAnalysisPage: React.FC = () => {
               <option value="lider">Líderes</option>
               <option value="brigadista">Brigadistas</option>
               <option value="movilizador">Movilizadores</option>
-              <option value="ciudadano">Ciudadanos</option>
             </select>
           )}
           <button
@@ -249,6 +280,11 @@ const GeographicAnalysisPage: React.FC = () => {
         <NavojoaMap 
           data={mapData}
           height={isMobile ? '400px' : '600px'}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          allPeople={flatData}
+          selectedRole={selectedRole}
+          onRoleChange={setSelectedRole}
         />
       </div>
 
