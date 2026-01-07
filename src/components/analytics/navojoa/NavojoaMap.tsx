@@ -46,7 +46,7 @@ const SectionDetailPanel: React.FC<{ section: NavojoaElectoralSection | null, on
     if (!section) return null;
 
     return (
-        <div className="absolute top-4 right-4 z-[1000] w-72 bg-white/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-200 p-4 animate-fade-in-right">
+        <div className="absolute top-24 right-4 z-[1000] w-72 bg-white/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-200 p-4 animate-fade-in-right">
             <div className="flex justify-between items-center mb-3">
                 <h3 className="font-bold text-primary flex items-center gap-2">
                     <MapPin className="w-5 h-5"/>
@@ -200,11 +200,11 @@ export const NavojoaMap: React.FC<NavojoaMapProps> = ({
             />
 
             {/* Role Filter Overlay (New) */}
-            <div className="absolute top-16 left-14 z-[1000] w-40">
+            <div className="absolute top-4 left-[23rem] z-[1000] w-40">
                 <select
                     value={selectedRole}
                     onChange={(e) => onRoleChange(e.target.value)}
-                    className="w-full bg-white/95 backdrop-blur-sm border border-gray-300 text-gray-700 text-xs rounded-lg shadow-md focus:ring-primary focus:border-primary block p-2"
+                    className="w-full bg-white/95 backdrop-blur-sm border border-gray-300 text-gray-700 text-sm rounded-lg shadow-md focus:ring-primary focus:border-primary block p-2"
                 >
                     <option value="all">Todos los Roles</option>
                     <option value="lider">Líderes</option>

@@ -135,17 +135,9 @@ En el Dashboard de Supabase, ve a **Database > Webhooks** y crea uno nuevo (o ed
 
 - **Para Pruebas:**
     curl -i --location --request POST 
-      'https://qknogktmkyxytzrxqkfb.supabase.co/functions/v1/geocode-person' \
-      --header 'Authorization: Bearer TU_ANON_KEY_AQUI' \
-      --header 'Content-Type: application/json' \
-      --data '{
-        "table": "lideres",
-        "record": {
-          "id": "f834915d-b3db-46db-add8-e85a129a643b",
-          "nombre_completo": "MICHEL GAEL FIERRO MENDOZA",
-          "direccion": "NACOZARI 807",
-          "colonia": "SOP",
-          "municipio": "NAVOJOA",
-          "entidad": "SON"
-        }
-   }
+     'tu supabase function' --header 
+     'Authorization: Bearer 
+     tu anonkey' --header 'Content-Type: application/json' --data 
+     '{"table": "lideres", "record": {"id": "f834915d-b3db-46db-add8-e85a129a643b", 
+     "nombre_completo": "MICHEL GAEL FIERRO MENDOZA", "direccion": "NACOZARI 807", "colonia"
+     "SOP", "municipio": "NAVOJOA", "entidad": "SON"}}'
