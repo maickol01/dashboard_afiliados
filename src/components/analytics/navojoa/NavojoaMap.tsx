@@ -4,7 +4,7 @@ import L from 'leaflet';
 import { ElectoralSectionLayer } from './ElectoralSectionLayer';
 import { AffiliateMarkerLayer } from './AffiliateMarkerLayer';
 import { Person, NavojoaElectoralSection } from '../../../types';
-import { X, Users, MapPin, Search } from 'lucide-react';
+import { X, Users, MapPin, Search, Maximize, Minimize } from 'lucide-react';
 
 // Fix for default Leaflet icon issues with Vite/Webpack
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -186,9 +186,23 @@ export const NavojoaMap: React.FC<NavojoaMapProps> = ({
 }) => {
     const [isEditable, setIsEditable] = React.useState(initialEditable);
     const [selectedSection, setSelectedSection] = React.useState<NavojoaElectoralSection | null>(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && isFullscreen) {
+                setIsFullscreen(false);
+            }
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [isFullscreen]);
 
     return (
-        <div style={{ height, width: '100%', position: 'relative' }} className="rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+        <div 
+            style={isFullscreen ? { height: '100vh', width: '100vw', position: 'fixed', top: 0, left: 0, zIndex: 2000 } : { height, width: '100%', position: 'relative' }} 
+            className={`rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white transition-all duration-300 ${isFullscreen ? 'rounded-none' : ''}`}
+        >
             
             <SectionDetailPanel section={selectedSection} onClose={() => setSelectedSection(null)} />
             
@@ -215,6 +229,14 @@ export const NavojoaMap: React.FC<NavojoaMapProps> = ({
             
             {/* Botón de Modo Edición en la esquina inferior izquierda */}
             <div className="absolute bottom-4 left-3 z-[1000] flex flex-col gap-2">
+                <button
+                    onClick={() => setIsFullscreen(!isFullscreen)}
+                    className="p-2 rounded-md shadow-md bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+                    title={isFullscreen ? "Salir de pantalla completa (ESC)" : "Pantalla completa"}
+                >
+                    {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                </button>
+
                 <button
                     onClick={() => setIsEditable(!isEditable)}
                     className={`p-2 rounded-md shadow-md transition-colors ${
