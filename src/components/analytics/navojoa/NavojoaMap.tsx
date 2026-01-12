@@ -34,11 +34,13 @@ interface NavojoaMapProps {
     onRoleChange?: (role: string) => void;
 }
 
-const MapController = () => {
+const MapController = ({ isFullscreen }: { isFullscreen: boolean }) => {
     const map = useMap();
     useEffect(() => {
-        setTimeout(() => map.invalidateSize(), 100);
-    }, [map]);
+        // Wait for CSS transition (300ms) to finish before resizing
+        const timer = setTimeout(() => map.invalidateSize(), 350);
+        return () => clearTimeout(timer);
+    }, [map, isFullscreen]);
     return null;
 };
 
@@ -266,7 +268,7 @@ export const NavojoaMap: React.FC<NavojoaMapProps> = ({
                 scrollWheelZoom={true}
                 style={{ height: '100%', width: '100%' }}
             >
-                <MapController />
+                <MapController isFullscreen={isFullscreen} />
                 
                 <LayersControl position="topright">
                     <LayersControl.BaseLayer checked name="Calles (OSM)">
