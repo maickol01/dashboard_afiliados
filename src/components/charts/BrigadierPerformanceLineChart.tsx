@@ -283,7 +283,28 @@ const BrigadierPerformanceLineChart: React.FC<BrigadierPerformanceLineChartProps
               }}
               itemStyle={{ color: '#374151' }}
             />
-            <Legend wrapperStyle={{ paddingTop: '20px' }} />
+            <Legend 
+              content={(props) => {
+                const { payload } = props;
+                if (!payload || payload.length === 0) return null;
+                
+                return (
+                  <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-6 max-h-24 overflow-y-auto px-4 py-3 bg-gray-50 rounded-lg border border-gray-100 shadow-inner scrollbar-thin scrollbar-thumb-gray-300">
+                    {payload.map((entry: any, index: number) => (
+                      <div key={`item-${index}`} className="flex items-center">
+                        <div 
+                          className="w-2.5 h-2.5 rounded-full mr-2 shadow-sm" 
+                          style={{ backgroundColor: entry.color }}
+                        />
+                        <span className="text-[10px] font-medium text-gray-600 whitespace-nowrap">
+                          {entry.value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }}
+            />
             <ReferenceLine y={500} label="Meta" stroke="#ef4444" strokeDasharray="3 3" />
             {brigadistaOptions.map((brigadista, index) => (
               <Area
