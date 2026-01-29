@@ -159,7 +159,7 @@ export class DataService {
     role: 'lider' | 'brigadista' | 'movilizador' | 'ciudadano'
   ): Person {
     return {
-      id: dbRecord.id,
+      id: `${role}-${dbRecord.id}`,
       name: dbRecord.nombre,
       nombre: dbRecord.nombre,
       role,
@@ -191,9 +191,9 @@ export class DataService {
       geocoded_at: dbRecord.geocoded_at ? new Date(dbRecord.geocoded_at) : undefined,
 
       // Campos específicos por rol
-      lider_id: 'lider_id' in dbRecord ? dbRecord.lider_id : undefined,
-      brigadista_id: 'brigadista_id' in dbRecord ? dbRecord.brigadista_id : undefined,
-      movilizador_id: 'movilizador_id' in dbRecord ? dbRecord.movilizador_id : undefined,
+      lider_id: 'lider_id' in dbRecord ? `lider-${dbRecord.lider_id}` : undefined,
+      brigadista_id: 'brigadista_id' in dbRecord ? `brigadista-${dbRecord.brigadista_id}` : undefined,
+      movilizador_id: 'movilizador_id' in dbRecord ? `movilizador-${dbRecord.movilizador_id}` : undefined,
 
       // Información de contacto
       contactInfo: {
@@ -224,15 +224,15 @@ export class DataService {
           // Transform ciudadanos
           const ciudadanos = (movilizador.ciudadanos || []).map((ciudadano) => ({
             ...this.convertToPersonFormat(ciudadano as Ciudadano, 'ciudadano'),
-            parentId: movilizador.id,
-            movilizador_id: movilizador.id
+            parentId: `movilizador-${movilizador.id}`,
+            movilizador_id: `movilizador-${movilizador.id}`
           }))
 
           // Create movilizador person with calculated registeredCount
           return {
             ...this.convertToPersonFormat(movilizador as Movilizador, 'movilizador'),
-            parentId: brigadista.id,
-            brigadista_id: brigadista.id,
+            parentId: `brigadista-${brigadista.id}`,
+            brigadista_id: `brigadista-${brigadista.id}`,
             children: ciudadanos,
             registeredCount: ciudadanos.length
           }
@@ -247,8 +247,8 @@ export class DataService {
         // Create brigadista person with calculated registeredCount
         return {
           ...this.convertToPersonFormat(brigadista as Brigadista, 'brigadista'),
-          parentId: lider.id,
-          lider_id: lider.id,
+          parentId: `lider-${lider.id}`,
+          lider_id: `lider-${lider.id}`,
           children: movilizadores,
           registeredCount: brigadistaRegisteredCount
         }
@@ -501,12 +501,15 @@ export class DataService {
     const allIds = new Set<string>()
     const duplicateIds: string[] = []
 
-    // Check for duplicate IDs across all levels
+    // Check for duplicate IDs across all levels, accounting for role-based prefixing that will happen
     const checkDuplicateId = (id: string, type: string) => {
-      if (allIds.has(id)) {
+      // Create a unique key combining type and ID to mimic the frontend transformation
+      const uniqueKey = `${type}-${id}`
+      
+      if (allIds.has(uniqueKey)) {
         duplicateIds.push(`${type}: ${id}`)
       } else {
-        allIds.add(id)
+        allIds.add(uniqueKey)
       }
     }
 
@@ -1493,6 +1496,17 @@ export class DataService {
 
   // ... (existing methods)
 
+  // Helper method to extract original ID from prefixed ID
+  private static extractOriginalId(prefixedId: string): string {
+    if (!prefixedId || typeof prefixedId !== 'string') return prefixedId;
+    const parts = prefixedId.split('-');
+    if (parts.length >= 2) {
+      // Return everything after the first dash
+      return prefixedId.substring(prefixedId.indexOf('-') + 1);
+    }
+    return prefixedId;
+  }
+
   static async getLideresList(): Promise<{ id: string; nombre: string }[]> {
     const { data, error } = await supabase
       .from('lideres')
@@ -1502,7 +1516,7 @@ export class DataService {
     if (error) {
       throw new DatabaseError('Failed to fetch leaders list', error.code, error.details ? { message: error.details } : undefined, error.hint);
     }
-    return data || [];
+    return (data || []).map(l => ({ ...l, id: `lider-${l.id}` }));
   }
 
   static async getBrigadistasList(): Promise<{ id: string; nombre: string }[]> {
@@ -1514,16 +1528,19 @@ export class DataService {
     if (error) {
       throw new DatabaseError('Failed to fetch brigadistas list', error.code, error.details ? { message: error.details } : undefined, error.hint);
     }
-    return data || [];
+    return (data || []).map(b => ({ ...b, id: `brigadista-${b.id}` }));
   }
 
   static async reassignPerson(personId: string, newParentId: string, role: 'brigadista' | 'movilizador'): Promise<void> {
     return this.circuitBreaker.execute(async () => {
       return withDatabaseRetry(async () => {
+        const originalPersonId = this.extractOriginalId(personId);
+        const originalNewParentId = this.extractOriginalId(newParentId);
+
         const rpcName = role === 'brigadista' ? 'reasignar_brigadista' : 'reasignar_movilizador';
         const params = role === 'brigadista'
-          ? { brigadista_id_in: personId, nuevo_lider_id_in: newParentId }
-          : { movilizador_id_in: personId, nuevo_brigadista_id_in: newParentId };
+          ? { brigadista_id_in: originalPersonId, nuevo_lider_id_in: originalNewParentId }
+          : { movilizador_id_in: originalPersonId, nuevo_brigadista_id_in: originalNewParentId };
 
         const { error } = await supabase.rpc(rpcName, params);
 
@@ -1545,8 +1562,10 @@ export class DataService {
   static async updatePerson(personId: string, role: string, newData: Partial<Person>): Promise<void> {
     return this.circuitBreaker.execute(async () => {
       return withDatabaseRetry(async () => {
+        const originalPersonId = this.extractOriginalId(personId);
+        
         const { error } = await supabase.rpc('update_person_details', {
-          person_id: personId,
+          person_id: originalPersonId,
           person_role: role,
           new_data: newData
         });
@@ -1571,6 +1590,7 @@ export class DataService {
   static async updateGeolocatedPerson(personId: string, role: string, data: Partial<Person>): Promise<void> {
     return this.circuitBreaker.execute(async () => {
       return withDatabaseRetry(async () => {
+        const originalPersonId = this.extractOriginalId(personId);
         const tableName = this.getTableName(role);
         
         const { error } = await supabase
@@ -1581,7 +1601,7 @@ export class DataService {
             geocode_status: data.geocode_status,
             geocoded_at: data.geocoded_at
           })
-          .eq('id', personId);
+          .eq('id', originalPersonId);
 
         if (error) {
           throw new DatabaseError(`Failed to update geolocation for ${role}`, error.code);
