@@ -9,7 +9,7 @@ import { DataService } from '../../services/dataService';
 // Import the three main Navojoa components
 import KPICards from '../analytics/navojoa/KPICards';
 import SectionVerticalBarChart from '../analytics/navojoa/SectionVerticalBarChart';
-import NavojoaMap from '../analytics/navojoa/NavojoaMap';
+import NavojoaMapLibre from '../analytics/navojoa/NavojoaMapLibre';
 import SectionHeatMap from '../analytics/navojoa/SectionHeatMap';
 
 const GeographicAnalysisPage: React.FC = () => {
@@ -67,15 +67,19 @@ const GeographicAnalysisPage: React.FC = () => {
 
     // 2. If no search, use role filter
     if (selectedRole !== 'all') {
-        const rootMatches = flatData.filter(p => p.role === selectedRole);
-        console.log(`[MAP FILTER] Found ${rootMatches.length} matches for role "${selectedRole}".`);
-
-        const relevantIds = new Set<string>();
-        collectHierarchyIds(rootMatches, relevantIds);
+        const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
         
-        const finalData = flatData.filter(p => relevantIds.has(p.id));
-        console.log(`[MAP FILTER] Returning ${finalData.length} people based on role filter.`);
-        return finalData;
+        const uniqueRoles = Array.from(new Set(flatData.map(p => p.role)));
+        console.log(`[MAP FILTER] Available roles: ${uniqueRoles.join(', ')}. Filtering for: "${selectedRole}"`);
+        
+        const matches = flatData.filter(p => {
+            const pRole = (p.role || '').toLowerCase();
+            const sRole = selectedRole.toLowerCase();
+            // Permissive check
+            return pRole.includes(sRole) || sRole.includes(pRole);
+        });
+        console.log(`[MAP FILTER] Returning ${matches.length} people based on strict role filter.`);
+        return matches;
     }
 
     // 3. Default view if no search and role is 'all' - show everyone
@@ -277,7 +281,7 @@ const GeographicAnalysisPage: React.FC = () => {
             </span>
           </div>
         </div>
-        <NavojoaMap 
+        <NavojoaMapLibre 
           data={mapData}
           height={isMobile ? '400px' : '600px'}
           searchTerm={searchTerm}
