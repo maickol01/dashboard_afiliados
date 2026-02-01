@@ -107,10 +107,10 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
     height = '600px',
     isEditable: initialEditable = false,
     searchTerm = '',
-    onSearchChange = () => {},
+    onSearchChange = () => { },
     allPeople = [],
     selectedRole = 'all',
-    onRoleChange = () => {}
+    onRoleChange = () => { }
 }) => {
     const mapRef = useRef<MapRef>(null);
     const [isEditable, setIsEditable] = useState(initialEditable);
@@ -142,7 +142,7 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
     // Add images to map when loaded
     const onMapLoad = useCallback((event: any) => {
         const map = event.target;
-        
+
         const createMarkerImage = (color: string) => {
             const svg = `
             <svg width="32" height="30" viewBox="0 0 32 30" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -165,7 +165,7 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
 
         createMarkerImage('#9f2241'); // Red/Secondary for standard pin
         createMarkerImage('#3b82f6'); // Blue for cluster
-        
+
         setIsMapLoaded(true);
     }, []);
 
@@ -197,7 +197,7 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
     const onMouseMove = useCallback((event: any) => {
         if (!mapRef.current) return;
         const map = mapRef.current.getMap();
-        
+
         // Check for point hover first
         const pointFeatures = map.queryRenderedFeatures(event.point, { layers: ['unclustered-point', 'clusters'] });
         if (pointFeatures.length > 0) {
@@ -213,7 +213,7 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
         const features = map.queryRenderedFeatures(event.point, { layers: ['sections-fill'] });
         const feature = features[0];
 
-        if (feature) {
+        if (feature && feature.id !== undefined) {
             map.getCanvas().style.cursor = 'pointer';
             if (hoveredSectionIdRef.current !== feature.id) {
                 if (hoveredSectionIdRef.current !== null) {
@@ -234,21 +234,25 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
     const onClick = useCallback((event: any) => {
         if (!mapRef.current) return;
         const map = mapRef.current.getMap();
-        
+
         const pointFeatures = map.queryRenderedFeatures(event.point, { layers: ['unclustered-point', 'clusters'] });
         if (pointFeatures.length > 0) {
             const feature = pointFeatures[0];
+            const geometry = feature.geometry;
+
+            if (geometry.type !== 'Point') return;
+
             if (feature.layer.id === 'clusters') {
                 const clusterId = feature.properties.cluster_id;
                 const source: any = map.getSource('affiliates-source');
                 source.getClusterExpansionZoom(clusterId, (err: any, zoom: number) => {
                     if (err) return;
-                    map.easeTo({ center: feature.geometry.coordinates, zoom: zoom });
+                    map.easeTo({ center: geometry.coordinates as [number, number], zoom: zoom });
                 });
             } else {
                 setPopupInfo({
-                    longitude: feature.geometry.coordinates[0],
-                    latitude: feature.geometry.coordinates[1],
+                    longitude: geometry.coordinates[0],
+                    latitude: geometry.coordinates[1],
                     person: feature.properties
                 });
             }
@@ -268,8 +272,8 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
             return;
         }
 
-        if (feature.layer.id === 'sections-fill') {
-            const sectionIdStr = feature.id?.toString();
+        if (feature.layer.id === 'sections-fill' && feature.id !== undefined) {
+            const sectionIdStr = feature.id.toString();
             const stats = sectionStats.get(sectionIdStr);
             if (selectedSectionIdRef.current !== feature.id) {
                 if (selectedSectionIdRef.current !== null) {
@@ -350,7 +354,7 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
                 onLoad={onMapLoad}
             >
                 <NavigationControl position="top-right" />
-                
+
                 <ElectoralSectionLayerLibre data={data} onSectionSelect={handleSectionSelect} />
 
                 {!isEditable && (
@@ -365,9 +369,9 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
                         draggable
                         onDragEnd={(e) => handleDragEnd(person.id, person.role, e)}
                     >
-                        <div 
-                            dangerouslySetInnerHTML={{ __html: RED_PIN_SVG }} 
-                            style={{ width: 32, height: 30, cursor: 'grab' }} 
+                        <div
+                            dangerouslySetInnerHTML={{ __html: RED_PIN_SVG }}
+                            style={{ width: 32, height: 30, cursor: 'grab' }}
                         />
                     </Marker>
                 ))}

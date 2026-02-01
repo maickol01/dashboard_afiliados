@@ -8,6 +8,23 @@ vi.mock('react-map-gl/maplibre', () => ({
     NavigationControl: () => <div data-testid="nav-control" />,
     Source: ({ children }: { children: React.ReactNode }) => <div data-testid="source">{children}</div>,
     Layer: () => <div data-testid="layer" />,
+    useMap: () => ({
+        current: {
+            getCanvas: () => ({ style: { cursor: '' } }),
+            resize: vi.fn(),
+            getMap: () => ({
+                setFeatureState: vi.fn(),
+                queryRenderedFeatures: vi.fn(() => []),
+                getCanvas: () => ({ style: { cursor: '' } }),
+                getSource: vi.fn(),
+                easeTo: vi.fn(),
+                hasImage: vi.fn(() => true),
+                addImage: vi.fn()
+            })
+        }
+    }),
+    Marker: ({ children }: { children: React.ReactNode }) => <div data-testid="marker">{children}</div>,
+    Popup: ({ children }: { children: React.ReactNode }) => <div data-testid="popup">{children}</div>
 }));
 
 describe('NavojoaMapLibre', () => {
