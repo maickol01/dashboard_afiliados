@@ -65,29 +65,11 @@ const GeographicAnalysisPage: React.FC = () => {
         return finalData;
     }
 
-    // 2. If no search, use role filter
-    if (selectedRole !== 'all') {
-        const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-        
-        const uniqueRoles = Array.from(new Set(flatData.map(p => p.role)));
-        console.log(`[MAP FILTER] Available roles: ${uniqueRoles.join(', ')}. Filtering for: "${selectedRole}"`);
-        
-        const matches = flatData.filter(p => {
-            const pRole = (p.role || '').toLowerCase();
-            const sRole = selectedRole.toLowerCase();
-            // Permissive check
-            return pRole.includes(sRole) || sRole.includes(pRole);
-        });
-        console.log(`[MAP FILTER] Returning ${matches.length} people based on strict role filter.`);
-        return matches;
-    }
+    // 2. Default view - show everyone (filtering handled by layer visibility)
+    console.log(`[MAP FILTER] Returning ${flatData.length} people for default view.`);
+    return flatData;
 
-    // 3. Default view if no search and role is 'all' - show everyone
-    const finalData = flatData;
-    console.log(`[MAP FILTER] Returning ${finalData.length} people for default view (all roles).`);
-    return finalData;
-
-  }, [flatData, selectedRole, searchTerm]);
+  }, [flatData, searchTerm]); // Removed selectedRole from dependency array
 
   // State for Navojoa electoral data
   const [navojoaData, setNavojoaData] = useState<NavojoaElectoralAnalytics | null>(null);

@@ -372,7 +372,7 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
                 <ElectoralSectionLayerLibre data={data} onSectionSelect={handleSectionSelect} />
 
                 {!isEditable && (
-                    <AffiliateMarkerLayerLibre data={data} isEditable={isEditable} />
+                    <AffiliateMarkerLayerLibre data={data} isEditable={isEditable} selectedRole={selectedRole} />
                 )}
 
                 {isEditable && data.filter(p => p.lat != null && p.lng != null).map(person => (

@@ -5,21 +5,50 @@ import { Person } from '../../../types';
 interface AffiliateMarkerLayerProps {
     data: Person[];
     isEditable?: boolean;
+    selectedRole?: string;
 }
 
-const PRIMARY_COLOR = '#235b4e';
-const SECONDARY_COLOR = '#9f2241';
-const ACCENT_COLOR = '#3b82f6';
+// Styling Constants per Role
+const ROLE_STYLES: Record<string, { pinColor: string; clusterColor: string; pinImage: string; clusterImage: string }> = {
+    ciudadano: {
+        pinColor: '#9f2241', // Red
+        clusterColor: '#3b82f6', // Blue
+        pinImage: 'marker-ciudadano',
+        clusterImage: 'cluster-ciudadano'
+    },
+    lider: {
+        pinColor: '#FBBF24', // Light Gold
+        clusterColor: '#B45309', // Dark Gold
+        pinImage: 'marker-lider',
+        clusterImage: 'cluster-lider'
+    },
+    brigadista: {
+        pinColor: '#A855F7', // Light Purple
+        clusterColor: '#6B21A8', // Dark Purple
+        pinImage: 'marker-brigadista',
+        clusterImage: 'cluster-brigadista'
+    },
+    movilizador: {
+        pinColor: '#22C55E', // Green
+        clusterColor: '#15803D', // Dark Green
+        pinImage: 'marker-movilizador',
+        clusterImage: 'cluster-movilizador'
+    }
+};
 
 export const AffiliateMarkerLayerLibre: React.FC<AffiliateMarkerLayerProps> = ({
     data,
-    isEditable = false
+    isEditable = false,
+    selectedRole = 'all'
 }) => {
-    // Transform Person[] into GeoJSON for MapLibre
-    const geojson = useMemo(() => {
-        const features = data
-            .filter(p => p.lat != null && p.lng != null)
-            .map(person => ({
+    // Split data by role and create GeoJSON for each
+    const roleSources = useMemo(() => {
+        const roles = ['lider', 'brigadista', 'movilizador', 'ciudadano'] as const;
+        
+        return roles.map(role => {
+            const roleData = data.filter(p => p.role === role && p.lat != null && p.lng != null);
+            
+            const features = roleData.map(person => ({
                 type: 'Feature' as const,
                 id: person.id,
                 properties: {
@@ -35,66 +64,78 @@ export const AffiliateMarkerLayerLibre: React.FC<AffiliateMarkerLayerProps> = ({
                 }
             }));
 
-        console.log(`[AffiliateMarkerLayerLibre] Rendering ${features.length} valid features.`);
-
-        return {
-            type: 'FeatureCollection' as const,
-            features
-        };
+            return {
+                role,
+                data: {
+                    type: 'FeatureCollection' as const,
+                    features
+                }
+            };
+        });
     }, [data]);
 
     return (
-        <Source
-            id="affiliates-source"
-            type="geojson"
-            data={geojson}
-            cluster={!isEditable}
-            clusterMaxZoom={16}
-            clusterRadius={27}
-        >
-            {/* Cluster Circles (Icons) */}
-            <Layer
-                id="clusters"
-                type="symbol"
-                filter={['has', 'point_count']}
-                layout={{
-                    'icon-image': 'marker-#3b82f6',
-                    'icon-size': 1.2, // Slightly larger cluster pin
-                    'icon-allow-overlap': true,
-                    'icon-ignore-placement': true, // Force render
-                    'text-field': '{point_count_abbreviated}',
-                    'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-                    'text-size': [
-                        'step',
-                        ['get', 'point_count'],
-                        12, // Default size
-                        100, // If count >= 100
-                        10, // Smaller size
-                        1000, // If count >= 1000
-                        9 // Even smaller
-                    ],
-                    'text-offset': [0, -0.2],
-                    'text-allow-overlap': true,
-                    'text-ignore-placement': true // Force render
-                }}
-                paint={{
-                    'text-color': '#3b82f6'
-                }}
-            />
+        <>
+            {roleSources.map(({ role, data }) => {
+                const style = ROLE_STYLES[role];
+                // Use a pluralized id for compatibility with existing tests/expectations
+                let pluralRole = role + 's';
+                if (role === 'lider') pluralRole = 'lideres';
+                if (role === 'movilizador') pluralRole = 'movilizadores';
+                
+                const sourceId = `${pluralRole}-source`;
+                const isVisible = selectedRole === 'all' || selectedRole === role ? 'visible' : 'none';
 
-            {/* Unclustered Points (Individual Pins) */}
-            <Layer
-                id="unclustered-point"
-                type="symbol"
-                filter={['!', ['has', 'point_count']]}
-                layout={{
-                    'icon-image': 'marker-#9f2241', // Always Red Pin as requested
-                    'icon-size': 0.56, // Reduced by 30%
-                    'icon-allow-overlap': true,
-                    'icon-ignore-placement': true, // Force render
-                    'icon-anchor': 'bottom'
-                }}
-            />
-        </Source>
+                return (
+                    <Source
+                        key={sourceId}
+                        id={sourceId}
+                        type="geojson"
+                        data={data}
+                        cluster={!isEditable}
+                        clusterMaxZoom={16}
+                        clusterRadius={35} // Slightly larger to avoid too many small clusters
+                    >
+                        {/* Cluster Circles (Icons) */}
+                        <Layer
+                            id={`clusters-${role}`}
+                            type="symbol"
+                            filter={['has', 'point_count']}
+                            layout={{
+                                visibility: isVisible,
+                                'icon-image': style.clusterImage,
+                                'icon-size': 1.2, // Slightly larger cluster pin
+                                'icon-allow-overlap': true,
+                                'icon-ignore-placement': true, // Force render
+                                'text-field': '{point_count_abbreviated}',
+                                'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                                'text-size': 11,
+                                'text-offset': [0, -0.15],
+                                'text-allow-overlap': true,
+                                'text-ignore-placement': true // Force render
+                            }}
+                            paint={{
+                                'text-color': '#ffffff' // White text for better contrast on dark/colored pins
+                            }}
+                        />
+
+                        {/* Unclustered Points (Individual Pins) */}
+                        <Layer
+                            id={`unclustered-point-${role}`}
+                            type="symbol"
+                            filter={['!', ['has', 'point_count']]}
+                            layout={{
+                                visibility: isVisible,
+                                'icon-image': style.pinImage,
+                                'icon-size': 0.56, // Reduced by 30%
+                                'icon-allow-overlap': true,
+                                'icon-ignore-placement': true, // Force render
+                                'icon-anchor': 'bottom'
+                            }}
+                        />
+                    </Source>
+                );
+            })}
+        </>
     );
 };

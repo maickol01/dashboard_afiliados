@@ -18,8 +18,15 @@ describe('AffiliateMarkerLayerLibre', () => {
     it('renders the source and layers', () => {
         render(<AffiliateMarkerLayerLibre data={mockData as any} />);
         
-        expect(screen.getByTestId('source')).toBeInTheDocument();
-        expect(screen.getByTestId('layer-clusters')).toBeInTheDocument();
-        expect(screen.getByTestId('layer-unclustered-point')).toBeInTheDocument();
+        // Should find multiple sources now
+        const sources = screen.getAllByTestId('source');
+        expect(sources.length).toBeGreaterThan(0);
+        
+        // Should find specific role layers
+        expect(screen.getByTestId('layer-clusters-lider')).toBeInTheDocument();
+        expect(screen.getByTestId('layer-unclustered-point-lider')).toBeInTheDocument();
+        
+        expect(screen.getByTestId('layer-clusters-brigadista')).toBeInTheDocument();
+        expect(screen.getByTestId('layer-unclustered-point-brigadista')).toBeInTheDocument();
     });
 });
