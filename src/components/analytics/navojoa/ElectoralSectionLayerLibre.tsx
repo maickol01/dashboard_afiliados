@@ -13,11 +13,13 @@ const SELECTED_COLOR = '#9f2241';
 interface ElectoralSectionLayerProps {
     data?: Person[];
     onSectionSelect: (section: NavojoaElectoralSection | null) => void;
+    onLoad?: () => void;
 }
 
 export const ElectoralSectionLayerLibre: React.FC<ElectoralSectionLayerProps> = ({ 
     data, 
-    onSectionSelect
+    onSectionSelect,
+    onLoad
 }) => {
     const { current: map } = useMap();
     const [geoJsonData, setGeoJsonData] = useState<any>(null);
@@ -42,6 +44,7 @@ export const ElectoralSectionLayerLibre: React.FC<ElectoralSectionLayerProps> = 
                     }))
                 };
                 setGeoJsonData(enhancedGeojson);
+                if (onLoad) onLoad();
 
                 // 2. Load/Process Section Stats
                 let hierarchicalData = data;
@@ -111,16 +114,24 @@ export const ElectoralSectionLayerLibre: React.FC<ElectoralSectionLayerProps> = 
                 <Layer
                     id="sections-labels"
                     type="symbol"
+                    minzoom={9}
                     layout={{
-                        'text-field': ['get', 'SECCION'],
-                        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-                        'text-size': 12,
-                        'text-allow-overlap': false,
-                        'text-ignore-placement': false
+                        'text-field': ['to-string', ['get', 'SECCION']],
+                        'text-font': ['Noto Sans Regular'],
+                        'text-size': [
+                            'interpolate',
+                            ['linear'],
+                            ['zoom'],
+                            9, 8,
+                            12, 12,
+                            15, 18
+                        ],
+                        'text-anchor': 'center',
+                        'text-allow-overlap': false
                     }}
                     paint={{
-                        'text-color': PRIMARY_COLOR,
-                        'text-halo-color': 'rgba(255, 255, 255, 0.8)',
+                        'text-color': '#000000',
+                        'text-halo-color': '#ffffff',
                         'text-halo-width': 2
                     }}
                 />

@@ -12,7 +12,7 @@ interface AffiliateMarkerLayerProps {
 const ROLE_STYLES: Record<string, { pinColor: string; clusterColor: string; pinImage: string; clusterImage: string }> = {
     ciudadano: {
         pinColor: '#9f2241', // Red
-        clusterColor: '#3b82f6', // Blue
+        clusterColor: '#6b1426', // Dark Red
         pinImage: 'marker-ciudadano',
         clusterImage: 'cluster-ciudadano'
     },
@@ -23,8 +23,8 @@ const ROLE_STYLES: Record<string, { pinColor: string; clusterColor: string; pinI
         clusterImage: 'cluster-lider'
     },
     brigadista: {
-        pinColor: '#A855F7', // Light Purple
-        clusterColor: '#6B21A8', // Dark Purple
+        pinColor: '#3b82f6', // Blue
+        clusterColor: '#1d4ed8', // Dark Blue
         pinImage: 'marker-brigadista',
         clusterImage: 'cluster-brigadista'
     },
@@ -94,7 +94,7 @@ export const AffiliateMarkerLayerLibre: React.FC<AffiliateMarkerLayerProps> = ({
                         data={data}
                         cluster={!isEditable}
                         clusterMaxZoom={16}
-                        clusterRadius={35} // Slightly larger to avoid too many small clusters
+                        clusterRadius={35}
                     >
                         {/* Cluster Circles (Icons) */}
                         <Layer
@@ -104,18 +104,42 @@ export const AffiliateMarkerLayerLibre: React.FC<AffiliateMarkerLayerProps> = ({
                             layout={{
                                 visibility: isVisible,
                                 'icon-image': style.clusterImage,
-                                'icon-size': 1.2, // Slightly larger cluster pin
+                                'icon-size': [
+                                    'step',
+                                    ['get', 'point_count'],
+                                    1.1,   // Size for < 100
+                                    100, 1.3,  // Size for 100-999
+                                    1000, 1.6  // Size for 1000+
+                                ],
                                 'icon-allow-overlap': true,
-                                'icon-ignore-placement': true, // Force render
-                                'text-field': '{point_count_abbreviated}',
-                                'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-                                'text-size': 11,
-                                'text-offset': [0, -0.15],
+                                'icon-ignore-placement': true
+                            }}
+                        />
+
+                        {/* Cluster Count (Text) - Separate Layer */}
+                        <Layer
+                            id={`cluster-count-${role}`}
+                            type="symbol"
+                            filter={['has', 'point_count']}
+                            layout={{
+                                visibility: isVisible,
+                                'text-field': ['get', 'point_count_abbreviated'],
+                                'text-font': ['Noto Sans Regular'],
+                                'text-size': [
+                                    'step',
+                                    ['get', 'point_count'],
+                                    11,
+                                    100, 12,
+                                    1000, 14
+                                ],
+                                'text-offset': [0, -0.1],
                                 'text-allow-overlap': true,
-                                'text-ignore-placement': true // Force render
+                                'text-ignore-placement': true
                             }}
                             paint={{
-                                'text-color': '#ffffff' // White text for better contrast on dark/colored pins
+                                'text-color': '#ffffff',
+                                'text-halo-color': '#000000',
+                                'text-halo-width': 2
                             }}
                         />
 
@@ -127,9 +151,9 @@ export const AffiliateMarkerLayerLibre: React.FC<AffiliateMarkerLayerProps> = ({
                             layout={{
                                 visibility: isVisible,
                                 'icon-image': style.pinImage,
-                                'icon-size': 0.56, // Reduced by 30%
+                                'icon-size': 0.56,
                                 'icon-allow-overlap': true,
-                                'icon-ignore-placement': true, // Force render
+                                'icon-ignore-placement': true,
                                 'icon-anchor': 'bottom'
                             }}
                         />

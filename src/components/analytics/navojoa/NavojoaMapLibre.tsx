@@ -47,6 +47,8 @@ const OSM_STYLE = {
             attribution: '&copy; OpenStreetMap Contributors'
         }
     },
+    // Required for rendering text (cluster counts)
+    glyphs: "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
     layers: [
         {
             id: 'osm-tiles-layer',
@@ -118,8 +120,30 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
     const [popupInfo, setPopupInfo] = useState<any>(null);
     const [isMapLoaded, setIsMapLoaded] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [sectionsLoaded, setSectionsLoaded] = useState(false);
     const hoveredSectionIdRef = useRef<string | number | null>(null);
     const selectedSectionIdRef = useRef<string | number | null>(null);
+
+    // Fallback to ensure markers load even if sections fail
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setSectionsLoaded(true);
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, []);
+
+    // Define interactive layers for all roles
+    const interactiveLayers = useMemo(() => {
+        const roles = ['lider', 'brigadista', 'movilizador', 'ciudadano'];
+        const layers = ['sections-fill']; // Always include section fill
+        
+        roles.forEach(role => {
+            layers.push(`clusters-${role}`);
+            layers.push(`unclustered-point-${role}`);
+        });
+        
+        return layers;
+    }, []);
 
     // Escape key handler
     useEffect(() => {
@@ -166,13 +190,13 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
         // Standard Icons (Spec colors)
         createMarkerImage('#9f2241', 'marker-ciudadano'); // Red
         createMarkerImage('#FBBF24', 'marker-lider');     // Gold
-        createMarkerImage('#A855F7', 'marker-brigadista'); // Purple
+        createMarkerImage('#3b82f6', 'marker-brigadista'); // Blue (Changed from Purple)
         createMarkerImage('#22C55E', 'marker-movilizador'); // Green
         
         // Cluster Icons
-        createMarkerImage('#3b82f6', 'cluster-ciudadano');  // Blue
+        createMarkerImage('#6b1426', 'cluster-ciudadano');  // Dark Red (Changed from Blue)
         createMarkerImage('#B45309', 'cluster-lider');      // Dark Gold
-        createMarkerImage('#6B21A8', 'cluster-brigadista'); // Dark Purple
+        createMarkerImage('#1d4ed8', 'cluster-brigadista'); // Dark Blue (Changed from Purple)
         createMarkerImage('#15803D', 'cluster-movilizador'); // Dark Green
 
         // Legacy support (to avoid breaking existing layers until fully migrated)
@@ -212,7 +236,9 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
         const map = mapRef.current.getMap();
 
         // Check for point hover first
-        const pointFeatures = map.queryRenderedFeatures(event.point, { layers: ['unclustered-point', 'clusters'] });
+        const pointLayers = interactiveLayers.filter(l => l.startsWith('clusters') || l.startsWith('unclustered'));
+        const pointFeatures = map.queryRenderedFeatures(event.point, { layers: pointLayers });
+        
         if (pointFeatures.length > 0) {
             map.getCanvas().style.cursor = 'pointer';
             if (hoveredSectionIdRef.current !== null) {
@@ -242,26 +268,38 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
                 hoveredSectionIdRef.current = null;
             }
         }
-    }, []);
+    }, [interactiveLayers]);
 
     const onClick = useCallback((event: any) => {
         if (!mapRef.current) return;
         const map = mapRef.current.getMap();
 
-        const pointFeatures = map.queryRenderedFeatures(event.point, { layers: ['unclustered-point', 'clusters'] });
+        const pointLayers = interactiveLayers.filter(l => l.startsWith('clusters') || l.startsWith('unclustered'));
+        const pointFeatures = map.queryRenderedFeatures(event.point, { layers: pointLayers });
+        
         if (pointFeatures.length > 0) {
             const feature = pointFeatures[0];
             const geometry = feature.geometry;
 
             if (geometry.type !== 'Point') return;
 
-            if (feature.layer.id === 'clusters') {
+            if (feature.layer.id.startsWith('clusters')) {
+                // Extract role from layer id "clusters-role"
+                const role = feature.layer.id.replace('clusters-', '');
+                // Determine source ID based on role pluralization logic used in AffiliateMarkerLayerLibre
+                let sourceId = `${role}s-source`;
+                if (role === 'lider') sourceId = 'lideres-source';
+                if (role === 'movilizador') sourceId = 'movilizadores-source';
+
                 const clusterId = feature.properties.cluster_id;
-                const source: any = map.getSource('affiliates-source');
-                source.getClusterExpansionZoom(clusterId, (err: any, zoom: number) => {
-                    if (err) return;
-                    map.easeTo({ center: geometry.coordinates as [number, number], zoom: zoom });
-                });
+                const source: any = map.getSource(sourceId);
+                
+                if (source) {
+                    source.getClusterExpansionZoom(clusterId, (err: any, zoom: number) => {
+                        if (err) return;
+                        map.easeTo({ center: geometry.coordinates as [number, number], zoom: zoom });
+                    });
+                }
             } else {
                 setPopupInfo({
                     longitude: geometry.coordinates[0],
@@ -301,7 +339,7 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
                 setSelectedSection(null);
             }
         }
-    }, [sectionStats]);
+    }, [sectionStats, interactiveLayers]);
 
     const handleSectionSelect = useCallback((section: NavojoaElectoralSection | null) => {
         setSelectedSection(section);
@@ -362,16 +400,16 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
                 style={{ width: '100%', height: '100%' }}
                 mapStyle={OSM_STYLE as any}
                 attributionControl={false}
-                interactiveLayerIds={isEditable ? [] : ['sections-fill', 'unclustered-point', 'clusters']}
+                interactiveLayerIds={isEditable ? [] : interactiveLayers}
                 onMouseMove={onMouseMove}
                 onClick={onClick}
                 onLoad={onMapLoad}
             >
                 <NavigationControl position="top-right" />
 
-                <ElectoralSectionLayerLibre data={data} onSectionSelect={handleSectionSelect} />
+                <ElectoralSectionLayerLibre data={data} onSectionSelect={handleSectionSelect} onLoad={() => setSectionsLoaded(true)} />
 
-                {!isEditable && (
+                {!isEditable && sectionsLoaded && (
                     <AffiliateMarkerLayerLibre data={data} isEditable={isEditable} selectedRole={selectedRole} />
                 )}
 
