@@ -64,7 +64,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ searchTerm, onSear
     };
 
     return (
-        <div ref={wrapperRef} className="absolute top-4 left-14 z-[1000] w-72">
+        <div ref={wrapperRef} className="absolute top-4 left-14 z-10 w-72">
             <div className="relative">
                 <input
                     type="text"

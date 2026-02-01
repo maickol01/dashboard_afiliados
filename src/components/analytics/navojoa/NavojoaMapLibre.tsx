@@ -62,7 +62,7 @@ const SectionDetailPanel: React.FC<{ section: NavojoaElectoralSection | null, on
     if (!section) return null;
 
     return (
-        <div className="absolute top-32 right-4 z-[1000] w-72 bg-white/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-200 p-4 animate-fade-in-right">
+        <div className="absolute top-32 right-4 z-20 w-72 bg-white/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-200 p-4 animate-fade-in-right">
             <div className="flex justify-between items-center mb-3">
                 <h3 className="font-bold text-primary flex items-center gap-2">
                     <MapPin className="w-5 h-5" />
@@ -143,7 +143,7 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
     const onMapLoad = useCallback((event: any) => {
         const map = event.target;
 
-        const createMarkerImage = (color: string) => {
+        const createMarkerImage = (color: string, name: string) => {
             const svg = `
             <svg width="32" height="30" viewBox="0 0 32 30" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M16 0C8.27 0 2 6.27 2 14C2 22.5 16 30 16 30C16 30 30 22.5 30 14C30 6.27 23.73 0 16 0Z" fill="${color}"/>
@@ -153,18 +153,31 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
             const svgBlob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
             const url = URL.createObjectURL(svgBlob);
             img.onload = () => {
-                if (!map.hasImage(`marker-${color}`)) {
-                    map.addImage(`marker-${color}`, img);
-                    console.log(`Added image marker-${color} to map`);
+                if (!map.hasImage(name)) {
+                    map.addImage(name, img);
+                    console.log(`Added image ${name} to map`);
                 }
                 URL.revokeObjectURL(url);
             };
-            img.onerror = (e) => console.error(`Failed to load marker image for ${color}`, e);
+            img.onerror = (e) => console.error(`Failed to load marker image ${name}`, e);
             img.src = url;
         };
 
-        createMarkerImage('#9f2241'); // Red/Secondary for standard pin
-        createMarkerImage('#3b82f6'); // Blue for cluster
+        // Standard Icons (Spec colors)
+        createMarkerImage('#9f2241', 'marker-ciudadano'); // Red
+        createMarkerImage('#FBBF24', 'marker-lider');     // Gold
+        createMarkerImage('#A855F7', 'marker-brigadista'); // Purple
+        createMarkerImage('#22C55E', 'marker-movilizador'); // Green
+        
+        // Cluster Icons
+        createMarkerImage('#3b82f6', 'cluster-ciudadano');  // Blue
+        createMarkerImage('#B45309', 'cluster-lider');      // Dark Gold
+        createMarkerImage('#6B21A8', 'cluster-brigadista'); // Dark Purple
+        createMarkerImage('#15803D', 'cluster-movilizador'); // Dark Green
+
+        // Legacy support (to avoid breaking existing layers until fully migrated)
+        createMarkerImage('#9f2241', 'marker-#9f2241'); 
+        createMarkerImage('#3b82f6', 'marker-#3b82f6'); 
 
         setIsMapLoaded(true);
     }, []);
@@ -297,7 +310,7 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
     return (
         <div
             style={isFullscreen ? { height: '100vh', width: '100vw', position: 'fixed', top: 0, left: 0, zIndex: 2000 } : { height, width: '100%', position: 'relative' }}
-            className={`rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white transition-all duration-300 ${isFullscreen ? 'rounded-none' : ''}`}
+            className={`rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white transition-all duration-300 ${isFullscreen ? 'rounded-none' : ''} z-0`}
         >
             <SectionDetailPanel section={selectedSection} onClose={() => {
                 setSelectedSection(null);
@@ -309,16 +322,17 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
 
             <SearchOverlay searchTerm={searchTerm} onSearchChange={onSearchChange} allPeople={allPeople} />
 
-            <div className="absolute top-4 left-[23rem] z-[1000] w-40">
+            <div className="absolute top-4 left-[23rem] z-10 w-40">
                 <select value={selectedRole} onChange={(e) => onRoleChange(e.target.value)} className="w-full bg-white/95 backdrop-blur-sm border border-gray-300 text-gray-700 text-sm rounded-lg shadow-md focus:ring-primary focus:border-primary block p-2">
                     <option value="all">Todos los Roles</option>
                     <option value="lider">Líderes</option>
                     <option value="brigadista">Brigadistas</option>
                     <option value="movilizador">Movilizadores</option>
+                    <option value="ciudadano">Ciudadanos</option>
                 </select>
             </div>
 
-            <div className="absolute bottom-4 left-3 z-[1000] flex flex-col gap-2">
+            <div className="absolute bottom-4 left-3 z-10 flex flex-col gap-2">
                 <button onClick={() => setIsFullscreen(!isFullscreen)} className="p-2 rounded-md shadow-md bg-white text-gray-700 hover:bg-gray-50 transition-colors" title={isFullscreen ? "Salir de pantalla completa (ESC)" : "Pantalla completa"}>
                     {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
                 </button>
@@ -337,7 +351,7 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
             </div>
 
             {isEditable && (
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-secondary text-white px-4 py-1 rounded-full text-xs font-bold shadow-lg animate-pulse border-2 border-white">
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-secondary text-white px-4 py-1 rounded-full text-xs font-bold shadow-lg animate-pulse border-2 border-white">
                     MODO EDICIÓN ACTIVO: Arrastre los pines para corregir
                 </div>
             )}
