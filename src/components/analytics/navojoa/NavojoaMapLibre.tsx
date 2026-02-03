@@ -7,6 +7,7 @@ import { AffiliateMarkerLayerLibre } from './AffiliateMarkerLayerLibre';
 import { navojoaElectoralService } from '../../../services/navojoaElectoralService';
 import { MapPin, X, Maximize, Minimize } from 'lucide-react';
 import { SearchOverlay } from './SearchOverlay';
+import { findMarkersAtSameLocation, getSpiderOffsets } from '../../../utils/spiderify';
 
 interface NavojoaMapProps {
     data?: Person[];
@@ -118,6 +119,11 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
     const [isEditable, setIsEditable] = useState(initialEditable);
     const [selectedSection, setSelectedSection] = useState<NavojoaElectoralSection | null>(null);
     const [popupInfo, setPopupInfo] = useState<any>(null);
+    const [spiderifiedGroup, setSpiderifiedGroup] = useState<{
+        center: { lat: number, lng: number };
+        people: Person[];
+        offsets: number[][];
+    } | null>(null);
     const [isMapLoaded, setIsMapLoaded] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [sectionsLoaded, setSectionsLoaded] = useState(false);
@@ -301,11 +307,36 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
                     });
                 }
             } else {
-                setPopupInfo({
-                    longitude: geometry.coordinates[0],
-                    latitude: geometry.coordinates[1],
-                    person: feature.properties
-                });
+                // Unclustered point click
+                const personId = feature.properties.id;
+                const person = data.find(p => p.id === personId);
+
+                if (person && person.lat && person.lng) {
+                    // Spiderify Logic: Only for citizens and if overlaps exist
+                    if (person.role === 'ciudadano' && (selectedRole === 'all' || selectedRole === 'ciudadano')) {
+                        const overlaps = findMarkersAtSameLocation(person, data);
+                        if (overlaps.length > 1) {
+                            // Trigger Spiderify
+                            const offsets = getSpiderOffsets(overlaps.length);
+                            setSpiderifiedGroup({
+                                center: { lat: person.lat, lng: person.lng },
+                                people: overlaps,
+                                offsets: offsets
+                            });
+                            setPopupInfo(null);
+                            // Zoom in slightly if too far out? Optional.
+                            return;
+                        }
+                    }
+
+                    // Standard Popup
+                    setPopupInfo({
+                        longitude: person.lng,
+                        latitude: person.lat,
+                        person: feature.properties
+                    });
+                    setSpiderifiedGroup(null); // Clear spiderify if clicking a normal single pin
+                }
             }
             return;
         }
@@ -313,6 +344,7 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
         const sectionFeatures = map.queryRenderedFeatures(event.point, { layers: ['sections-fill'] });
         const feature = sectionFeatures[0];
 
+        // Click on map background (no features)
         if (!feature) {
             if (selectedSectionIdRef.current !== null) {
                 map.setFeatureState({ source: 'sections-source', id: selectedSectionIdRef.current }, { selected: false });
@@ -320,6 +352,7 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
             }
             setSelectedSection(null);
             setPopupInfo(null);
+            setSpiderifiedGroup(null); // Clear spiderify on background click
             return;
         }
 
