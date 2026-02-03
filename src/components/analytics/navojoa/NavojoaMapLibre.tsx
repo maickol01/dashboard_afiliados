@@ -8,6 +8,7 @@ import { navojoaElectoralService } from '../../../services/navojoaElectoralServi
 import { MapPin, X, Maximize, Minimize } from 'lucide-react';
 import { SearchOverlay } from './SearchOverlay';
 import { findMarkersAtSameLocation, getSpiderOffsets } from '../../../utils/spiderify';
+import { SpiderLegsLayer } from './SpiderLegsLayer';
 
 interface NavojoaMapProps {
     data?: Person[];
@@ -444,6 +445,48 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
 
                 {!isEditable && sectionsLoaded && (
                     <AffiliateMarkerLayerLibre data={data} isEditable={isEditable} selectedRole={selectedRole} />
+                )}
+
+                {/* Spiderify Elements */}
+                {spiderifiedGroup && (
+                    <>
+                        <SpiderLegsLayer center={spiderifiedGroup.center} offsets={spiderifiedGroup.offsets} />
+                        {spiderifiedGroup.people.map((person, index) => {
+                            const offset = spiderifiedGroup.offsets[index];
+                            const lng = spiderifiedGroup.center.lng + offset[0];
+                            const lat = spiderifiedGroup.center.lat + offset[1];
+
+                            return (
+                                <Marker
+                                    key={`spider-${person.id}`}
+                                    longitude={lng}
+                                    latitude={lat}
+                                    anchor="bottom"
+                                    onClick={(e) => {
+                                        e.originalEvent.stopPropagation();
+                                        setPopupInfo({
+                                            longitude: lng,
+                                            latitude: lat,
+                                            person: {
+                                                id: person.id,
+                                                name: person.nombre,
+                                                role: person.role,
+                                                seccion: person.seccion,
+                                                status: person.geocode_status
+                                            }
+                                        });
+                                    }}
+                                >
+                                    <div
+                                        className="cursor-pointer transition-all duration-300 hover:scale-110"
+                                        title={person.nombre}
+                                        dangerouslySetInnerHTML={{ __html: RED_PIN_SVG }}
+                                        style={{ width: 32, height: 30 }}
+                                    />
+                                </Marker>
+                            );
+                        })}
+                    </>
                 )}
 
                 {isEditable && data.filter(p => p.lat != null && p.lng != null).map(person => (
