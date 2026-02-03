@@ -373,6 +373,9 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
         }
 
         if (feature.layer.id === 'sections-fill' && feature.id !== undefined) {
+            // Always collapse spiderify when clicking anywhere on the map (sections)
+            setSpiderifiedGroup(null);
+
             const sectionIdStr = feature.id.toString();
             const stats = sectionStats.get(sectionIdStr);
             if (selectedSectionIdRef.current !== feature.id) {
