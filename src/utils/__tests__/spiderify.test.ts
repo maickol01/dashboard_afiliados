@@ -32,6 +32,16 @@ describe('spiderify utils', () => {
             const unique = new Set(offsets.map(o => `${o[0]},${o[1]}`));
             expect(unique.size).toBe(count);
         });
+
+        it('should handle large counts (spiral)', () => {
+            const count = 500;
+            const offsets = getSpiderOffsets(count);
+            expect(offsets.length).toBe(count);
+            // Verify bounding box isn't insane (should be roughly within 0.1 deg for 500 points)
+            const maxOffset = Math.max(...offsets.map(o => Math.max(Math.abs(o[0]), Math.abs(o[1]))));
+            expect(maxOffset).toBeLessThan(0.1); 
+            expect(maxOffset).toBeGreaterThan(0.001);
+        });
     });
 
     describe('findMarkersAtSameLocation', () => {

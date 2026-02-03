@@ -11,15 +11,38 @@ export const getSpiderOffsets = (count: number, baseRadius: number = 0.0003): nu
     if (count <= 1) return [];
 
     const offsets: number[][] = [];
-    const twoPi = Math.PI * 2;
-    // Start at top
-    const startAngle = Math.PI / 2;
+    
+    // Use Circle for small counts (<= 9)
+    if (count <= 9) {
+        const twoPi = Math.PI * 2;
+        const startAngle = Math.PI / 2;
 
-    for (let i = 0; i < count; i++) {
-        const angle = (i * twoPi) / count + startAngle;
-        const x = Math.cos(angle) * baseRadius;
-        const y = Math.sin(angle) * baseRadius;
-        offsets.push([x, y]);
+        for (let i = 0; i < count; i++) {
+            const angle = (i * twoPi) / count + startAngle;
+            offsets.push([
+                Math.cos(angle) * baseRadius,
+                Math.sin(angle) * baseRadius
+            ]);
+        }
+    } else {
+        // Use Golden Angle Spiral (Sunflower) for large counts
+        // This packs points efficiently in a disc shape
+        const goldenAngle = Math.PI * (3 - Math.sqrt(5)); // ~2.39996 radians
+        
+        // Spacing factor. 
+        // We want points to be roughly 'baseRadius' apart.
+        const c = baseRadius * 0.9;
+
+        for (let i = 0; i < count; i++) {
+            const angle = i * goldenAngle;
+            // Radius grows with sqrt(i) to maintain constant density
+            const radius = c * Math.sqrt(i + 5) + baseRadius; 
+            
+            offsets.push([
+                Math.cos(angle) * radius,
+                Math.sin(angle) * radius
+            ]);
+        }
     }
     
     return offsets;
