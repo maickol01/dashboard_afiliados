@@ -303,10 +303,24 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
                 const source: any = map.getSource(sourceId);
                 
                 if (source) {
+                    let expansionSuccess = false;
                     source.getClusterExpansionZoom(clusterId, (err: any, zoom: number) => {
                         if (err) return;
+                        expansionSuccess = true;
                         map.easeTo({ center: geometry.coordinates as [number, number], zoom: zoom });
                     });
+
+                    // Fallback: If points are at identical coordinates, getClusterExpansionZoom might hang or fail.
+                    // Force zoom to uncluster (maxZoom + 1 = 17) or step in.
+                    setTimeout(() => {
+                        if (!expansionSuccess) {
+                            const currentZoom = map.getZoom();
+                            // If we are close to unclustering, go all the way to 17 to trigger spiderify
+                            // Otherwise just zoom in a bit
+                            const targetZoom = currentZoom >= 15 ? 17 : currentZoom + 2;
+                            map.easeTo({ center: geometry.coordinates as [number, number], zoom: targetZoom });
+                        }
+                    }, 150);
                 }
             } else {
                 // Unclustered point click
