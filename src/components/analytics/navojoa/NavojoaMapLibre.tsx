@@ -146,6 +146,7 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
         
         roles.forEach(role => {
             layers.push(`clusters-${role}`);
+            layers.push(`cluster-count-${role}`);
             layers.push(`unclustered-point-${role}`);
         });
         
@@ -243,7 +244,7 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
         const map = mapRef.current.getMap();
 
         // Check for point hover first
-        const pointLayers = interactiveLayers.filter(l => l.startsWith('clusters') || l.startsWith('unclustered'));
+        const pointLayers = interactiveLayers.filter(l => l.startsWith('clusters') || l.startsWith('cluster-count') || l.startsWith('unclustered'));
         const pointFeatures = map.queryRenderedFeatures(event.point, { layers: pointLayers });
         
         if (pointFeatures.length > 0) {
@@ -281,7 +282,7 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
         if (!mapRef.current) return;
         const map = mapRef.current.getMap();
 
-        const pointLayers = interactiveLayers.filter(l => l.startsWith('clusters') || l.startsWith('unclustered'));
+        const pointLayers = interactiveLayers.filter(l => l.startsWith('clusters') || l.startsWith('cluster-count') || l.startsWith('unclustered'));
         const pointFeatures = map.queryRenderedFeatures(event.point, { layers: pointLayers });
         
         if (pointFeatures.length > 0) {
@@ -290,9 +291,9 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
 
             if (geometry.type !== 'Point') return;
 
-            if (feature.layer.id.startsWith('clusters')) {
-                // Extract role from layer id "clusters-role"
-                const role = feature.layer.id.replace('clusters-', '');
+            if (feature.layer.id.startsWith('clusters') || feature.layer.id.startsWith('cluster-count')) {
+                // Extract role from layer id
+                const role = feature.layer.id.replace('clusters-', '').replace('cluster-count-', '');
                 // Determine source ID based on role pluralization logic used in AffiliateMarkerLayerLibre
                 let sourceId = `${role}s-source`;
                 if (role === 'lider') sourceId = 'lideres-source';
