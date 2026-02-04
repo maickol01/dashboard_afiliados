@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Person } from '../../types';
 import { useGlobalFilter, DateFilterOption } from '../../context/GlobalFilterContext';
+import { isSameDay, isSameWeek, isSameMonth, checkDateFilter } from '../../utils/dateUtils';
 
 export interface LeaderProductivityData {
   id: string;
@@ -19,33 +20,6 @@ interface LeaderProductivityTableProps {
   loading?: boolean;
 }
 
-const isSameDay = (d1: Date, d2: Date) => 
-  d1.getDate() === d2.getDate() && 
-  d1.getMonth() === d2.getMonth() && 
-  d1.getFullYear() === d2.getFullYear();
-
-const isSameWeek = (date: Date, now: Date) => {
-  const d = new Date(date);
-  const n = new Date(now);
-  d.setHours(0, 0, 0, 0);
-  n.setHours(0, 0, 0, 0);
-  // Set to nearest Thursday: current date + 4 - current day number
-  // Make Sunday's day number 7
-  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
-  n.setDate(n.getDate() + 4 - (n.getDay() || 7));
-  // Get first day of year
-  const yearStartD = new Date(d.getFullYear(), 0, 1);
-  const yearStartN = new Date(n.getFullYear(), 0, 1);
-  // Calculate full weeks to nearest Thursday
-  const weekNoD = Math.ceil((((d.getTime() - yearStartD.getTime()) / 86400000) + 1) / 7);
-  const weekNoN = Math.ceil((((n.getTime() - yearStartN.getTime()) / 86400000) + 1) / 7);
-  return weekNoD === weekNoN && d.getFullYear() === n.getFullYear();
-};
-
-const isSameMonth = (d1: Date, d2: Date) => 
-  d1.getMonth() === d2.getMonth() && 
-  d1.getFullYear() === d2.getFullYear();
-
 const LeaderProductivityTable: React.FC<LeaderProductivityTableProps> = ({ 
   hierarchicalData, 
   loading = false 
@@ -57,16 +31,6 @@ const LeaderProductivityTable: React.FC<LeaderProductivityTableProps> = ({
     if (!hierarchicalData || hierarchicalData.length === 0) return [];
 
     const now = new Date();
-
-    const checkFilter = (dateStr: Date | string) => {
-      const date = new Date(dateStr);
-      if (selectedOption === 'total') return true;
-      if (selectedOption === 'day') return isSameDay(date, now);
-      if (selectedOption === 'week') return isSameWeek(date, now);
-      if (selectedOption === 'month') return isSameMonth(date, now);
-      if (selectedOption === 'custom' && customDate) return isSameDay(date, customDate);
-      return true;
-    };
 
     const leaders = hierarchicalData.map((leader) => {
       let brigadistasReactive = 0;
@@ -87,7 +51,7 @@ const LeaderProductivityTable: React.FC<LeaderProductivityTableProps> = ({
         if (isSameMonth(date, now)) monthCount++;
 
         // Reactive columns calculation
-        if (checkFilter(date)) {
+        if (checkDateFilter(date, selectedOption, customDate)) {
             if (node.role === 'brigadista') brigadistasReactive++;
             if (node.role === 'movilizador') movilizadoresReactive++;
             if (node.role === 'ciudadano') ciudadanosReactive++;
@@ -170,15 +134,6 @@ const LeaderProductivityTable: React.FC<LeaderProductivityTableProps> = ({
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Nombre
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Día
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Semana
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Mes
-              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-100">
                 Brigadistas
               </th>
@@ -191,6 +146,15 @@ const LeaderProductivityTable: React.FC<LeaderProductivityTableProps> = ({
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider bg-gray-100">
                 Total
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Día
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Semana
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Mes
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -198,15 +162,6 @@ const LeaderProductivityTable: React.FC<LeaderProductivityTableProps> = ({
               <tr key={leader.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900">{leader.name}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{leader.day}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{leader.week}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{leader.month}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap bg-gray-50">
                   <div className="text-sm text-gray-900">{leader.brigadistas}</div>
@@ -221,6 +176,15 @@ const LeaderProductivityTable: React.FC<LeaderProductivityTableProps> = ({
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
                     {leader.total}
                   </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">{leader.day}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">{leader.week}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">{leader.month}</div>
                 </td>
               </tr>
             ))}
