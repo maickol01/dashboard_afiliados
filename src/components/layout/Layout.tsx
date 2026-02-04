@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { BarChart3, Users, Menu, X, MapPin, CheckCircle } from 'lucide-react';
+import { BarChart3, Users, Menu, X, MapPin, CheckCircle, UserPlus, TrendingUp } from 'lucide-react';
 import { DateFilterDropdown } from '../shared/DateFilterDropdown';
-
-export type PageType = 'analytics' | 'geographic' | 'quality' | 'hierarchy';
+import { PageType } from '../../context/GlobalFilterContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,6 +14,8 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
 
   const navigation = [
     { name: 'Analytics', key: 'analytics', icon: BarChart3 },
+    { name: 'Brigadistas', key: 'brigadistas', icon: UserPlus },
+    { name: 'Movilizadores', key: 'movilizadores', icon: TrendingUp },
     { name: 'Análisis Geográfico', key: 'geographic', icon: MapPin },
     { name: 'Calidad de Datos', key: 'quality', icon: CheckCircle },
     { name: 'Tabla Jerárquica', key: 'hierarchy', icon: Users },
@@ -103,10 +104,12 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
             <div className="flex flex-1 items-center justify-between">
               <h2 className="text-xl font-semibold text-gray-900">
                 {currentPage === 'analytics' ? 'Analytics' : 
+                 currentPage === 'brigadistas' ? 'Brigadistas' :
+                 currentPage === 'movilizadores' ? 'Movilizadores' :
                  currentPage === 'geographic' ? 'Análisis Geográfico' :
                  currentPage === 'quality' ? 'Calidad de Datos' : 'Jerarquía'}
               </h2>
-              {currentPage === 'analytics' && <DateFilterDropdown />}
+              {(currentPage === 'analytics' || currentPage === 'brigadistas' || currentPage === 'movilizadores') && <DateFilterDropdown />}
             </div>
           </div>
         </div>

@@ -5,9 +5,9 @@ import { Person } from '../types';
  * Returns an array of [lngOffset, latOffset] pairs.
  * 
  * @param count Number of points to distribute
- * @param baseRadius Radius in degrees (approx). Default 0.00075 (~75m, doubled from previous increase)
+ * @param baseRadius Radius in degrees (approx). Default 0.00125 (~125m, doubled from previous increase)
  */
-export const getSpiderOffsets = (count: number, baseRadius: number = 0.00075): number[][] => {
+export const getSpiderOffsets = (count: number, baseRadius: number = 0.00125): number[][] => {
     if (count <= 1) return [];
 
     const offsets: number[][] = [];
