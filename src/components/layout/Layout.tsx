@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { BarChart3, Users, Menu, X, MapPin, CheckCircle } from 'lucide-react';
+import { DateFilterDropdown } from '../shared/DateFilterDropdown';
 
 export type PageType = 'analytics' | 'geographic' | 'quality' | 'hierarchy';
 
@@ -99,12 +100,13 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
             <Menu className="h-6 w-6" />
           </button>
           <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-            <div className="flex flex-1 items-center">
+            <div className="flex flex-1 items-center justify-between">
               <h2 className="text-xl font-semibold text-gray-900">
                 {currentPage === 'analytics' ? 'Analytics' : 
                  currentPage === 'geographic' ? 'Análisis Geográfico' :
                  currentPage === 'quality' ? 'Calidad de Datos' : 'Jerarquía'}
               </h2>
+              {currentPage === 'analytics' && <DateFilterDropdown />}
             </div>
           </div>
         </div>
