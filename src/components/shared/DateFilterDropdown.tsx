@@ -26,14 +26,27 @@ export const DateFilterDropdown: React.FC = () => {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Check if the click is on a native date picker (sometimes they are outside the React tree)
-      // This is hard to detect perfectly across browsers, but we check if the active element is one of our inputs
-      const activeEl = document.activeElement;
-      const isInputActive = activeEl && (activeEl.getAttribute('type') === 'date');
+      const target = event.target as HTMLElement;
       
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) && !isInputActive) {
-        setIsOpen(false);
+      // Don't close if clicking inside the dropdown
+      if (dropdownRef.current && dropdownRef.current.contains(target)) {
+        return;
       }
+
+      // Special check for native date pickers:
+      // In many browsers, the picker is not a child of the input in the DOM.
+      // We can check if the click target is the input or if it's likely a picker part.
+      // But a better way is to check if the focus is still on our inputs.
+      setTimeout(() => {
+          const activeEl = document.activeElement;
+          const isOurInput = activeEl && dropdownRef.current?.contains(activeEl);
+          
+          if (!isOurInput && dropdownRef.current && !dropdownRef.current.contains(document.activeElement)) {
+            // Only close if we are not interacting with our inputs
+            // We use a small timeout to allow focus to shift
+            setIsOpen(false);
+          }
+      }, 100);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
