@@ -5,6 +5,7 @@ import HierarchyPage from './components/hierarchy/HierarchyPage';
 import { GeographicAnalysisPage, DataQualityPage } from './components/pages';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { DataErrorBoundary } from './components/common/DataErrorBoundary';
+import { GlobalFilterProvider } from './context/GlobalFilterContext';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('analytics');
@@ -26,11 +27,13 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <Layout currentPage={currentPage} onPageChange={setCurrentPage}>
-        <DataErrorBoundary>
-          {renderPage()}
-        </DataErrorBoundary>
-      </Layout>
+      <GlobalFilterProvider>
+        <Layout currentPage={currentPage} onPageChange={setCurrentPage}>
+          <DataErrorBoundary>
+            {renderPage()}
+          </DataErrorBoundary>
+        </Layout>
+      </GlobalFilterProvider>
     </ErrorBoundary>
   );
 }
