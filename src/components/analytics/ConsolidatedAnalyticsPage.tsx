@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Users, UserPlus, TrendingUp, Target } from 'lucide-react';
 import { useData } from '../../hooks/useData';
-import { Period } from '../../types';
+import { Period, Person } from '../../types';
 import LineChart from '../charts/LineChart';
 import { KPICardsSection, LeaderProductivityTable } from '../shared';
 import RealTimeIndicator from './RealTimeIndicator';
 import UpdateDetector from './UpdateDetector';
 import type { KPICard } from '../shared';
+import { useGlobalFilter } from '../../context/GlobalFilterContext';
+import { checkDateFilter, isSameMonth, isSameWeek } from '../../utils/dateUtils';
 
 const ConsolidatedAnalyticsPage: React.FC = () => {
+    const { selectedOption, customDate } = useGlobalFilter();
     const {
         data: hierarchicalData,
         analytics,
@@ -25,6 +28,84 @@ const ConsolidatedAnalyticsPage: React.FC = () => {
         clearRealTimeError,
         clearRecentUpdates
     } = useData(null);
+
+    // Calculate filtered totals
+    const filteredAnalytics = useMemo(() => {
+        if (!hierarchicalData) return { totalLideres: 0, totalBrigadistas: 0, totalMobilizers: 0, totalCitizens: 0 };
+        
+        // If 'total' is selected and we have pre-calculated analytics, use them (faster)
+        // Except analytics might be stale if we want purely client-side filtering consistency?
+        // But analytics from useData(null) is total.
+        if (selectedOption === 'total' && analytics) {
+             return {
+                 totalLideres: analytics.totalLideres,
+                 totalBrigadistas: analytics.totalBrigadistas,
+                 totalMobilizers: analytics.totalMobilizers,
+                 totalCitizens: analytics.totalCitizens
+             };
+        }
+
+        let totalLideres = 0;
+        let totalBrigadistas = 0;
+        let totalMobilizers = 0;
+        let totalCitizens = 0;
+        
+        const traverse = (nodes: Person[]) => {
+            nodes.forEach(node => {
+                if (checkDateFilter(node.created_at, selectedOption, customDate)) {
+                    if (node.role === 'lider') totalLideres++;
+                    if (node.role === 'brigadista') totalBrigadistas++;
+                    if (node.role === 'movilizador') totalMobilizers++;
+                    if (node.role === 'ciudadano') totalCitizens++;
+                }
+                if (node.children) traverse(node.children);
+            });
+        };
+        
+        traverse(hierarchicalData);
+        
+        return {
+            totalLideres,
+            totalBrigadistas,
+            totalMobilizers,
+            totalCitizens
+        };
+    }, [hierarchicalData, analytics, selectedOption, customDate]);
+
+    // Calculate filtered chart data
+    const filteredRegistrations = useMemo(() => {
+        if (!analytics) return { daily: [], weekly: [], monthly: [] };
+        
+        if (selectedOption === 'total') {
+            return {
+                daily: analytics.dailyRegistrations,
+                weekly: analytics.weeklyRegistrations,
+                monthly: analytics.monthlyRegistrations
+            };
+        }
+        
+        if (selectedOption === 'month') {
+             return {
+                 daily: analytics.dailyRegistrations.filter(r => isSameMonth(new Date(r.date), new Date())),
+                 weekly: [], 
+                 monthly: []
+             };
+        }
+        
+        if (selectedOption === 'week') {
+            return {
+                daily: analytics.dailyRegistrations.filter(r => isSameWeek(new Date(r.date), new Date())),
+                weekly: [],
+                monthly: []
+            };
+        }
+        
+        return {
+             daily: analytics.dailyRegistrations.filter(r => checkDateFilter(r.date, selectedOption, customDate)),
+             weekly: [],
+             monthly: []
+        };
+    }, [analytics, selectedOption, customDate]);
 
     // Handle loading state
     if (loading) {
@@ -63,19 +144,19 @@ const ConsolidatedAnalyticsPage: React.FC = () => {
 
     if (!analytics) return null;
 
-    // Prepare KPI cards data from analytics
+    // Prepare KPI cards data from filtered analytics
     const mainKPICards: KPICard[] = [
         {
             name: 'Total Líderes',
-            value: analytics.totalLideres,
+            value: filteredAnalytics.totalLideres,
             icon: Users,
             color: 'bg-primary',
-            change: '+12%',
+            change: '+12%', // This change % logic would need history to be accurate, leaving static for now or hiding
             trend: 'up',
         },
         {
             name: 'Total Brigadistas',
-            value: analytics.totalBrigadistas,
+            value: filteredAnalytics.totalBrigadistas,
             icon: UserPlus,
             color: 'bg-secondary',
             change: '+8%',
@@ -83,7 +164,7 @@ const ConsolidatedAnalyticsPage: React.FC = () => {
         },
         {
             name: 'Total Movilizadores',
-            value: analytics.totalMobilizers,
+            value: filteredAnalytics.totalMobilizers,
             icon: TrendingUp,
             color: 'bg-accent',
             change: '+15%',
@@ -91,7 +172,7 @@ const ConsolidatedAnalyticsPage: React.FC = () => {
         },
         {
             name: 'Total Ciudadanos',
-            value: analytics.totalCitizens,
+            value: filteredAnalytics.totalCitizens,
             icon: Target,
             color: 'bg-neutral',
             change: '+22%',
@@ -180,9 +261,9 @@ const ConsolidatedAnalyticsPage: React.FC = () => {
                     <div className="w-full">
                         <LineChart
                             registrations={{
-                                daily: analytics.dailyRegistrations,
-                                weekly: analytics.weeklyRegistrations,
-                                monthly: analytics.monthlyRegistrations,
+                                daily: filteredRegistrations.daily,
+                                weekly: filteredRegistrations.weekly,
+                                monthly: filteredRegistrations.monthly,
                             }}
                         />
                     </div>
