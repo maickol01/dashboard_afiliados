@@ -9,7 +9,7 @@ import { Person } from '../../types';
  * Muestra el rendimiento de los brigadistas y permite filtrar por Líder.
  */
 const BrigadistasPage: React.FC = () => {
-  const { selectedLeaderId, setLeader, setBrigadista, setCurrentPage } = useGlobalFilter();
+  const { selectedLeaderId, setHierarchy, setCurrentPage } = useGlobalFilter();
   const { data: hierarchicalData, loading, error } = useData(null);
 
   // Obtener la lista de brigadistas basada en el filtro de líder
@@ -39,11 +39,9 @@ const BrigadistasPage: React.FC = () => {
 
   // Manejar el clic en un brigadista para profundizar a movilizadores
   const handleBrigadistaClick = (brigadista: Person) => {
-    // Si el líder no estaba seleccionado, seleccionarlo basándose en el parentId del brigadista
-    if (!selectedLeaderId && brigadista.parentId) {
-        setLeader(brigadista.parentId);
-    }
-    setBrigadista(brigadista.id);
+    // Usamos setHierarchy para actualizar ambos niveles de una vez y evitar estados intermedios
+    const leaderId = selectedLeaderId || brigadista.parentId || null;
+    setHierarchy(leaderId, brigadista.id);
     setCurrentPage('movilizadores');
   };
 

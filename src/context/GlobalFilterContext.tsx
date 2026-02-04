@@ -23,6 +23,7 @@ export interface GlobalFilterState {
   selectedBrigadistaId: string | null;
   setLeader: (id: string | null) => void;
   setBrigadista: (id: string | null) => void;
+  setHierarchy: (leaderId: string | null, brigadistaId: string | null) => void;
 }
 
 const GlobalFilterContext = createContext<GlobalFilterState | undefined>(undefined);
@@ -45,12 +46,16 @@ export const GlobalFilterProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   const setLeader = (id: string | null) => {
     setSelectedLeaderId(id);
-    // Reset brigadista if leader changes
     setSelectedBrigadistaId(null);
   };
 
   const setBrigadista = (id: string | null) => {
     setSelectedBrigadistaId(id);
+  };
+
+  const setHierarchy = (leaderId: string | null, brigadistaId: string | null) => {
+    setSelectedLeaderId(leaderId);
+    setSelectedBrigadistaId(brigadistaId);
   };
 
   return (
@@ -63,7 +68,8 @@ export const GlobalFilterProvider: React.FC<{ children: ReactNode }> = ({ childr
       selectedLeaderId,
       selectedBrigadistaId,
       setLeader,
-      setBrigadista
+      setBrigadista,
+      setHierarchy
     }}>
       {children}
     </GlobalFilterContext.Provider>

@@ -124,7 +124,7 @@ export const DateFilterDropdown: React.FC = () => {
                             type="date" 
                             className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                             value={tempRange.startDate}
-                            onChange={(e) => setTempRange({ ...tempRange, startDate: e.target.value })}
+                            onChange={(e) => setTempRange({ ...tempRange, startDate: e.target.value, endDate: e.target.value })}
                         />
                     </div>
                     <div>

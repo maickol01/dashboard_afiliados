@@ -14,9 +14,10 @@ const MovilizadoresPage: React.FC = () => {
 
   // Obtener la lista de movilizadores basada en los filtros
   const filteredMovilizadores = useMemo(() => {
-    if (!hierarchicalData) return [];
+    if (!hierarchicalData || hierarchicalData.length === 0) return [];
 
-    let movilizadores: Person[] = [];
+    const isFiltered = !!(selectedLeaderId || selectedBrigadistaId);
+    let results: Person[] = [];
 
     const getMovilizadoresFromBrigadista = (brigadista: Person) => {
         if (brigadista.children) {
@@ -26,43 +27,44 @@ const MovilizadoresPage: React.FC = () => {
     };
 
     const getMovilizadoresFromLeader = (leader: Person) => {
-        let results: Person[] = [];
+        let leaderResults: Person[] = [];
         if (leader.children) {
             leader.children.forEach(brigadista => {
                 if (brigadista.role === 'brigadista') {
+                    // Si hay brigadista seleccionado, solo tomamos ese. Si no, tomamos todos.
                     if (!selectedBrigadistaId || brigadista.id === selectedBrigadistaId) {
-                        results = [...results, ...getMovilizadoresFromBrigadista(brigadista)];
+                        leaderResults = [...leaderResults, ...getMovilizadoresFromBrigadista(brigadista)];
                     }
                 }
             });
         }
-        return results;
+        return leaderResults;
     };
 
     if (selectedLeaderId) {
-        // Filtrar por Líder específico
+        // Caso 1: Filtrado por Líder (y opcionalmente por Brigadista vía getMovilizadoresFromLeader)
         const leader = hierarchicalData.find(l => l.id === selectedLeaderId);
         if (leader) {
-            movilizadores = getMovilizadoresFromLeader(leader);
+            results = getMovilizadoresFromLeader(leader);
         }
     } else if (selectedBrigadistaId) {
-        // Si no hay líder pero hay brigadista (caso raro debido al cascading, pero posible)
+        // Caso 2: Filtrado solo por Brigadista
         hierarchicalData.forEach(leader => {
             if (leader.children) {
                 const brigadista = leader.children.find(b => b.id === selectedBrigadistaId);
                 if (brigadista) {
-                    movilizadores = getMovilizadoresFromBrigadista(brigadista);
+                    results = [...results, ...getMovilizadoresFromBrigadista(brigadista)];
                 }
             }
         });
     } else {
-        // Mostrar todos los movilizadores
+        // Caso 3: Sin filtros, mostrar todos
         hierarchicalData.forEach(leader => {
-            movilizadores = [...movilizadores, ...getMovilizadoresFromLeader(leader)];
+            results = [...results, ...getMovilizadoresFromLeader(leader)];
         });
     }
 
-    return movilizadores;
+    return results;
   }, [hierarchicalData, selectedLeaderId, selectedBrigadistaId]);
 
   if (error) {
