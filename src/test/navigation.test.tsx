@@ -4,9 +4,34 @@ import { describe, it, expect, vi } from 'vitest';
 import App from '../App';
 import { GlobalFilterProvider } from '../context/GlobalFilterContext';
 
-// App depends on GlobalFilterProvider being above it, which I added to main.tsx
-// But for unit tests of App, I should wrap it or mock the context.
-// Since I want to test the integration of Context + App, I'll wrap it.
+// Mock useData hook
+vi.mock('../hooks/useData', () => ({
+    useData: () => ({
+        data: [
+            { id: '1', name: 'Leader 1', role: 'lider', children: [] }
+        ],
+        loading: false,
+        error: null,
+        analytics: {
+            totalLideres: 1,
+            totalBrigadistas: 0,
+            totalMobilizers: 0,
+            totalCitizens: 0,
+            dailyRegistrations: [],
+            weeklyRegistrations: [],
+            monthlyRegistrations: [],
+            goals: { overallProgress: { percentage: 0, current: 0, target: 100 } }
+        },
+        realTimeStatus: { isConnected: true, error: null },
+        recentUpdates: [],
+        triggerRealTimeRefresh: vi.fn(),
+        checkRealTimeConnection: vi.fn(),
+        detectManualUpdates: vi.fn(),
+        clearRealTimeError: vi.fn(),
+        clearRecentUpdates: vi.fn(),
+        refetchData: vi.fn()
+    })
+}));
 
 describe('Navigation Integration', () => {
     it('navigates between pages using context', () => {
@@ -25,7 +50,7 @@ describe('Navigation Integration', () => {
         fireEvent.click(brigadistasLinks[0]);
 
         // Check if page changed
-        expect(screen.getByText('Productividad de Brigadistas')).toBeInTheDocument();
+        expect(screen.getByText('Detalle de Productividad por Brigadista')).toBeInTheDocument();
         expect(screen.getByRole('heading', { level: 2, name: 'Brigadistas' })).toBeInTheDocument();
     });
 });
