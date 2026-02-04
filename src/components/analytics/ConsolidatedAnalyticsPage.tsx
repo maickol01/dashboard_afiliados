@@ -3,7 +3,7 @@ import { Users, UserPlus, TrendingUp, Target } from 'lucide-react';
 import { useData } from '../../hooks/useData';
 import { Period, Person } from '../../types';
 import LineChart from '../charts/LineChart';
-import { KPICardsSection, LeaderProductivityTable } from '../shared';
+import { KPICardsSection, ProductivityTable } from '../shared';
 import RealTimeIndicator from './RealTimeIndicator';
 import UpdateDetector from './UpdateDetector';
 import type { KPICard } from '../shared';
@@ -11,7 +11,7 @@ import { useGlobalFilter } from '../../context/GlobalFilterContext';
 import { checkDateFilter, isSameMonth, isSameWeek } from '../../utils/dateUtils';
 
 const ConsolidatedAnalyticsPage: React.FC = () => {
-    const { selectedOption, customRange } = useGlobalFilter();
+    const { selectedOption, customRange, setCurrentPage, setLeader } = useGlobalFilter();
     const {
         data: hierarchicalData,
         analytics,
@@ -28,6 +28,12 @@ const ConsolidatedAnalyticsPage: React.FC = () => {
         clearRealTimeError,
         clearRecentUpdates
     } = useData(null);
+
+    // Handle drill-down to brigadistas
+    const handleLeaderClick = (leader: Person) => {
+        setLeader(leader.id);
+        setCurrentPage('brigadistas');
+    };
 
     // Calculate filtered totals
     const filteredAnalytics = useMemo(() => {
@@ -270,10 +276,12 @@ const ConsolidatedAnalyticsPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Leader Productivity Table */}
-            <LeaderProductivityTable
-                hierarchicalData={hierarchicalData || []}
+            {/* Productivity Table */}
+            <ProductivityTable
+                role="lider"
+                data={hierarchicalData || []}
                 loading={loading}
+                onNameClick={handleLeaderClick}
             />
         </div>
     );

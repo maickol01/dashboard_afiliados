@@ -7,9 +7,10 @@ interface LayoutProps {
   children: React.ReactNode;
   currentPage: PageType;
   onPageChange: (page: PageType) => void;
+  headerActions?: React.ReactNode;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) => {
+const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange, headerActions }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navigation = [
@@ -109,7 +110,10 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageChange }) 
                  currentPage === 'geographic' ? 'Análisis Geográfico' :
                  currentPage === 'quality' ? 'Calidad de Datos' : 'Jerarquía'}
               </h2>
-              {(currentPage === 'analytics' || currentPage === 'brigadistas' || currentPage === 'movilizadores') && <DateFilterDropdown />}
+              <div className="flex items-center space-x-4">
+                {headerActions}
+                {(currentPage === 'analytics' || currentPage === 'brigadistas' || currentPage === 'movilizadores') && <DateFilterDropdown />}
+              </div>
             </div>
           </div>
         </div>
