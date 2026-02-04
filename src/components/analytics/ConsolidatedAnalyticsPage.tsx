@@ -11,7 +11,7 @@ import { useGlobalFilter } from '../../context/GlobalFilterContext';
 import { checkDateFilter, isSameMonth, isSameWeek } from '../../utils/dateUtils';
 
 const ConsolidatedAnalyticsPage: React.FC = () => {
-    const { selectedOption, customDate } = useGlobalFilter();
+    const { selectedOption, customRange } = useGlobalFilter();
     const {
         data: hierarchicalData,
         analytics,
@@ -52,7 +52,7 @@ const ConsolidatedAnalyticsPage: React.FC = () => {
         
         const traverse = (nodes: Person[]) => {
             nodes.forEach(node => {
-                if (checkDateFilter(node.created_at, selectedOption, customDate)) {
+                if (checkDateFilter(node.created_at, selectedOption, customRange)) {
                     if (node.role === 'lider') totalLideres++;
                     if (node.role === 'brigadista') totalBrigadistas++;
                     if (node.role === 'movilizador') totalMobilizers++;
@@ -70,7 +70,7 @@ const ConsolidatedAnalyticsPage: React.FC = () => {
             totalMobilizers,
             totalCitizens
         };
-    }, [hierarchicalData, analytics, selectedOption, customDate]);
+    }, [hierarchicalData, analytics, selectedOption, customRange]);
 
     // Calculate filtered chart data
     const filteredRegistrations = useMemo(() => {
@@ -101,11 +101,11 @@ const ConsolidatedAnalyticsPage: React.FC = () => {
         }
         
         return {
-             daily: analytics.dailyRegistrations.filter(r => checkDateFilter(r.date, selectedOption, customDate)),
+             daily: analytics.dailyRegistrations.filter(r => checkDateFilter(r.date, selectedOption, customRange)),
              weekly: [],
              monthly: []
         };
-    }, [analytics, selectedOption, customDate]);
+    }, [analytics, selectedOption, customRange]);
 
     // Handle loading state
     if (loading) {

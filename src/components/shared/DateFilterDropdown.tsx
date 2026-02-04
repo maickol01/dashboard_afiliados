@@ -3,14 +3,35 @@ import { Calendar, ChevronDown, Check } from 'lucide-react';
 import { useGlobalFilter, DateFilterOption } from '../../context/GlobalFilterContext';
 
 export const DateFilterDropdown: React.FC = () => {
-  const { selectedOption, customDate, setFilter } = useGlobalFilter();
+  const { selectedOption, customRange, setFilter } = useGlobalFilter();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Local state for range editing
+  const [tempRange, setTempRange] = useState({ 
+    startDate: customRange.startDate ? customRange.startDate.toISOString().split('T')[0] : '',
+    endDate: customRange.endDate ? customRange.endDate.toISOString().split('T')[0] : ''
+  });
+
+  // Sync tempRange when customRange changes externally or when opening
+  useEffect(() => {
+    if (isOpen) {
+        setTempRange({
+            startDate: customRange.startDate ? customRange.startDate.toISOString().split('T')[0] : '',
+            endDate: customRange.endDate ? customRange.endDate.toISOString().split('T')[0] : ''
+        });
+    }
+  }, [isOpen, customRange]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      // Check if the click is on a native date picker (sometimes they are outside the React tree)
+      // This is hard to detect perfectly across browsers, but we check if the active element is one of our inputs
+      const activeEl = document.activeElement;
+      const isInputActive = activeEl && (activeEl.getAttribute('type') === 'date');
+      
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) && !isInputActive) {
         setIsOpen(false);
       }
     };
@@ -26,22 +47,30 @@ export const DateFilterDropdown: React.FC = () => {
   ];
 
   const handleSelect = (option: DateFilterOption) => {
-    setFilter(option);
-    setIsOpen(false);
+    if (option !== 'custom') {
+        setFilter(option);
+        setIsOpen(false);
+    }
   };
 
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.value) {
-          // Adjust for timezone issues by creating date from parts
-          const [year, month, day] = e.target.value.split('-').map(Number);
-          const date = new Date(year, month - 1, day);
-          setFilter('custom', date);
+  const handleApplyCustom = () => {
+      if (tempRange.startDate) {
+          const [y1, m1, d1] = tempRange.startDate.split('-').map(Number);
+          const start = new Date(y1, m1 - 1, d1);
+          
+          let end = null;
+          if (tempRange.endDate) {
+              const [y2, m2, d2] = tempRange.endDate.split('-').map(Number);
+              end = new Date(y2, m2 - 1, d2);
+          }
+          
+          setFilter('custom', { startDate: start, endDate: end });
           setIsOpen(false);
       }
   };
 
-  const currentLabel = selectedOption === 'custom' && customDate
-    ? customDate.toLocaleDateString('es-ES')
+  const currentLabel = selectedOption === 'custom' && (customRange.startDate || customRange.endDate)
+    ? `${customRange.startDate?.toLocaleDateString('es-ES') || ''}${customRange.endDate ? ` - ${customRange.endDate.toLocaleDateString('es-ES')}` : ''}`
     : options.find(o => o.id === selectedOption)?.label || 'Total';
 
   return (
@@ -51,12 +80,12 @@ export const DateFilterDropdown: React.FC = () => {
         className="flex items-center space-x-2 px-3 py-1.5 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium text-gray-700"
       >
         <Calendar className="h-4 w-4 text-gray-500" />
-        <span>{currentLabel}</span>
+        <span className="max-w-[150px] truncate">{currentLabel}</span>
         <ChevronDown className="h-4 w-4 text-gray-400" />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+        <div className="absolute right-0 mt-2 w-64 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
           <div className="py-1" role="menu">
             {options.map((option) => (
               <button
@@ -73,14 +102,35 @@ export const DateFilterDropdown: React.FC = () => {
             
             <div className="border-t border-gray-100 my-1"></div>
             
-            <div className="px-4 py-2 text-sm text-gray-700">
-                <label className="block text-xs font-medium text-gray-500 mb-1">Fecha Específica</label>
-                <input 
-                    type="date" 
-                    className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                    onChange={handleDateChange}
-                    value={selectedOption === 'custom' && customDate ? customDate.toISOString().split('T')[0] : ''}
-                />
+            <div className="px-4 py-3 text-sm text-gray-700 bg-gray-50">
+                <p className="font-semibold mb-2 text-xs uppercase tracking-wider text-gray-500">Rango Personalizado</p>
+                <div className="space-y-3">
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Desde</label>
+                        <input 
+                            type="date" 
+                            className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                            value={tempRange.startDate}
+                            onChange={(e) => setTempRange({ ...tempRange, startDate: e.target.value })}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Hasta (Opcional)</label>
+                        <input 
+                            type="date" 
+                            className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                            value={tempRange.endDate}
+                            onChange={(e) => setTempRange({ ...tempRange, endDate: e.target.value })}
+                        />
+                    </div>
+                    <button
+                        onClick={handleApplyCustom}
+                        disabled={!tempRange.startDate}
+                        className="w-full mt-2 bg-primary text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                        Aplicar Filtro
+                    </button>
+                </div>
             </div>
           </div>
         </div>

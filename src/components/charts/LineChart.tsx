@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush } from 'recharts';
 import { Period } from '../../types';
 import { Calendar, TrendingUp } from 'lucide-react';
+import { useGlobalFilter } from '../../context/GlobalFilterContext';
 
 interface RegistrationsData {
   daily: { date: string; count: number }[];
@@ -14,19 +15,23 @@ interface LineChartProps {
 }
 
 const CustomLineChartComponent: React.FC<LineChartProps> = ({ registrations }) => {
-  const [period, setPeriod] = useState<Period>('day');
+  const { selectedOption } = useGlobalFilter();
 
   const chartData = useMemo(() => {
-    switch (period) {
-      case 'day': return registrations.daily;
-      case 'week': return registrations.weekly;
-      case 'month': return registrations.monthly;
-      default: return registrations.daily;
+    // If we have a specific filtered daily view (day, week, month, custom), use it.
+    // If we are in 'total' view, we can default to weekly or monthly for better overview, 
+    // but the user might want to see daily too. Let's decide based on selectedOption.
+    if (selectedOption === 'total') {
+        return registrations.monthly.length > 0 ? registrations.monthly : registrations.daily;
     }
-  }, [period, registrations]);
+    return registrations.daily;
+  }, [selectedOption, registrations]);
 
   const title = `Ciudadanos Registrados`;
-  const subtitle = period === 'day' ? 'Por Día' : period === 'week' ? 'Por Semana' : 'Por Mes';
+  const subtitle = selectedOption === 'day' ? 'Hoy' : 
+                   selectedOption === 'week' ? 'Esta Semana' : 
+                   selectedOption === 'month' ? 'Este Mes' : 
+                   selectedOption === 'custom' ? 'Fecha Seleccionada' : 'Progreso Total';
 
   // Calculate total for the current view to show as a summary
   const totalInView = useMemo(() => {
@@ -49,22 +54,6 @@ const CustomLineChartComponent: React.FC<LineChartProps> = ({ registrations }) =
     return null;
   };
 
-  const headerControls = (
-    <div className="flex bg-gray-100 p-1 rounded-lg">
-      {(['day', 'week', 'month'] as Period[]).map((p) => (
-        <button
-          key={p}
-          onClick={() => setPeriod(p)}
-          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${period === p
-            ? 'bg-white text-primary shadow-sm'
-            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
-            }`}>
-          {p === 'day' ? 'Día' : p === 'week' ? 'Semana' : 'Mes'}
-        </button>
-      ))}
-    </div>
-  );
-
   if (!chartData || chartData.length === 0) {
     return (
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -73,7 +62,6 @@ const CustomLineChartComponent: React.FC<LineChartProps> = ({ registrations }) =
             <h3 className="text-xl font-bold text-gray-900">{title}</h3>
             <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
           </div>
-          <div className="mt-4 sm:mt-0">{headerControls}</div>
         </div>
         <div className="h-[350px] flex flex-col items-center justify-center text-gray-400 bg-gray-50/50 rounded-xl border-2 border-dashed border-gray-200">
           <Calendar className="w-12 h-12 mb-3 opacity-20" />
@@ -101,7 +89,6 @@ const CustomLineChartComponent: React.FC<LineChartProps> = ({ registrations }) =
             </div>
           </div>
         </div>
-        <div className="mt-4 sm:mt-0">{headerControls}</div>
       </div>
 
       <div className="w-full h-96 min-h-[400px]">

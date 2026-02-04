@@ -25,13 +25,27 @@ export const isSameMonth = (d1: Date, d2: Date) =>
   d1.getMonth() === d2.getMonth() && 
   d1.getFullYear() === d2.getFullYear();
 
-export const checkDateFilter = (dateStr: Date | string, selectedOption: string, customDate: Date | null) => {
+export const checkDateFilter = (dateStr: Date | string, selectedOption: string, customRange: { startDate: Date | null, endDate: Date | null }) => {
     const date = new Date(dateStr);
     const now = new Date();
     if (selectedOption === 'total') return true;
     if (selectedOption === 'day') return isSameDay(date, now);
     if (selectedOption === 'week') return isSameWeek(date, now);
     if (selectedOption === 'month') return isSameMonth(date, now);
-    if (selectedOption === 'custom' && customDate) return isSameDay(date, customDate);
+    if (selectedOption === 'custom') {
+        const { startDate, endDate } = customRange;
+        if (startDate && endDate) {
+            // Set times to 0 for comparison if we only care about days
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            return d >= start && d <= end;
+        }
+        if (startDate) return isSameDay(date, startDate);
+        return true;
+    }
     return true;
 };

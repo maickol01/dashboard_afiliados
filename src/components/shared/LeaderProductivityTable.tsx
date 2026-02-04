@@ -24,7 +24,7 @@ const LeaderProductivityTable: React.FC<LeaderProductivityTableProps> = ({
   hierarchicalData, 
   loading = false 
 }) => {
-  const { selectedOption, customDate } = useGlobalFilter();
+  const { selectedOption, customRange } = useGlobalFilter();
 
   // Transform hierarchical data to table format
   const leaderData = useMemo(() => {
@@ -51,7 +51,7 @@ const LeaderProductivityTable: React.FC<LeaderProductivityTableProps> = ({
         if (isSameMonth(date, now)) monthCount++;
 
         // Reactive columns calculation
-        if (checkDateFilter(date, selectedOption, customDate)) {
+        if (checkDateFilter(date, selectedOption, customRange)) {
             if (node.role === 'brigadista') brigadistasReactive++;
             if (node.role === 'movilizador') movilizadoresReactive++;
             if (node.role === 'ciudadano') ciudadanosReactive++;
@@ -84,7 +84,7 @@ const LeaderProductivityTable: React.FC<LeaderProductivityTableProps> = ({
 
     // Sort by Total (descending)
     return leaders.sort((a, b) => b.total - a.total);
-  }, [hierarchicalData, selectedOption, customDate]);
+  }, [hierarchicalData, selectedOption, customRange]);
 
   if (loading) {
     return (
