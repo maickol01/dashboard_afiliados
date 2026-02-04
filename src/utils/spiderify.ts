@@ -5,13 +5,13 @@ import { Person } from '../types';
  * Returns an array of [lngOffset, latOffset] pairs.
  * 
  * @param count Number of points to distribute
- * @param baseRadius Radius in degrees (approx). Default 0.000375 (~37.5m, increased from 30m)
+ * @param baseRadius Radius in degrees (approx). Default 0.00075 (~75m, doubled from previous increase)
  */
-export const getSpiderOffsets = (count: number, baseRadius: number = 0.000375): number[][] => {
+export const getSpiderOffsets = (count: number, baseRadius: number = 0.00075): number[][] => {
     if (count <= 1) return [];
 
     const offsets: number[][] = [];
-    
+
     // Use Circle for small counts (<= 9)
     if (count <= 9) {
         const twoPi = Math.PI * 2;
@@ -28,7 +28,7 @@ export const getSpiderOffsets = (count: number, baseRadius: number = 0.000375): 
         // Use Golden Angle Spiral (Sunflower) for large counts
         // This packs points efficiently in a disc shape
         const goldenAngle = Math.PI * (3 - Math.sqrt(5)); // ~2.39996 radians
-        
+
         // Spacing factor. 
         // We want points to be roughly 'baseRadius' apart.
         const c = baseRadius * 0.9;
@@ -36,15 +36,15 @@ export const getSpiderOffsets = (count: number, baseRadius: number = 0.000375): 
         for (let i = 0; i < count; i++) {
             const angle = i * goldenAngle;
             // Radius grows with sqrt(i) to maintain constant density
-            const radius = c * Math.sqrt(i + 5) + baseRadius; 
-            
+            const radius = c * Math.sqrt(i + 5) + baseRadius;
+
             offsets.push([
                 Math.cos(angle) * radius,
                 Math.sin(angle) * radius
             ]);
         }
     }
-    
+
     return offsets;
 };
 
@@ -53,21 +53,24 @@ export const getSpiderOffsets = (count: number, baseRadius: number = 0.000375): 
  * Matches role as well.
  */
 export const findMarkersAtSameLocation = (
-    target: Person, 
+    target: Person,
     allData: Person[],
     precision: number = 0.000001
 ): Person[] => {
     if (target.lat == null || target.lng == null) return [];
 
+    const targetLat = target.lat;
+    const targetLng = target.lng;
+
     return allData.filter(p => {
         // Strict role matching - only group same types
         if (p.role !== target.role) return false;
-        
+
         if (p.lat == null || p.lng == null) return false;
-        
-        const latDiff = Math.abs(p.lat - target.lat);
-        const lngDiff = Math.abs(p.lng - target.lng);
-        
+
+        const latDiff = Math.abs(p.lat - targetLat);
+        const lngDiff = Math.abs(p.lng - targetLng);
+
         return latDiff < precision && lngDiff < precision;
     });
 };
