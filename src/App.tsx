@@ -7,7 +7,7 @@ import { useLideresList } from './hooks/queries/useLideresList';
 import { useSubordinates } from './hooks/queries/useSubordinates';
 import { HierarchicalFilterDropdown } from './components/shared';
 import { removeLoader } from './utils/loader';
-import { DataService } from './services/DataService';
+import { DataService } from './services/dataService';
 import LoadingSpinner from './components/common/LoadingSpinner';
 
 const ConsolidatedAnalyticsPage = lazy(() => import('./components/analytics/ConsolidatedAnalyticsPage'));
