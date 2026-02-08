@@ -18,13 +18,14 @@ const CustomLineChartComponent: React.FC<LineChartProps> = ({ registrations }) =
   const { selectedOption } = useGlobalFilter();
 
   const chartData = useMemo(() => {
-    // If we have a specific filtered daily view (day, week, month, custom), use it.
-    // If we are in 'total' view, we can default to weekly or monthly for better overview, 
-    // but the user might want to see daily too. Let's decide based on selectedOption.
+    const daily = registrations.daily || [];
+    const monthly = registrations.monthly || [];
+    
     if (selectedOption === 'total') {
-        return registrations.monthly.length > 0 ? registrations.monthly : registrations.daily;
+        // Si hay suficientes datos mensuales, úsalos para una vista menos ruidosa
+        return monthly.length > 1 ? monthly : daily;
     }
-    return registrations.daily;
+    return daily;
   }, [selectedOption, registrations]);
 
   const title = `Ciudadanos Registrados`;
@@ -92,7 +93,8 @@ const CustomLineChartComponent: React.FC<LineChartProps> = ({ registrations }) =
       </div>
 
       <div className="w-full h-96 min-h-[400px]">
-        <ResponsiveContainer width="100%" height="100%">
+        {/* Usamos un valor numérico para minHeight para asegurar el cálculo inicial */}
+        <ResponsiveContainer width="99%" height={400}>
           <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">

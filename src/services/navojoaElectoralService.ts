@@ -213,6 +213,30 @@ export class NavojoaElectoralService implements SectionDataTransformer {
     }
 
     /**
+     * Generate Navojoa electoral analytics from a pre-calculated summary (RPC)
+     */
+    generateAnalyticsFromSummary(summary: any): NavojoaElectoralAnalytics {
+        const sectionData: NavojoaElectoralSection[] = (summary.sectionData || []).map((s: any) => ({
+            ...s,
+            lastUpdated: new Date(),
+            hasMinimumData: s.totalRegistrations >= NAVOJOA_CONSTANTS.MINIMUM_REGISTRATIONS_THRESHOLD
+        }));
+
+        // Calculate KPIs
+        const kpis = this.calculateElectoralKPIs(sectionData);
+
+        // Generate heat map data
+        const heatMapData = this.generateHeatMapData(sectionData);
+
+        return {
+            sectionData,
+            kpis,
+            heatMapData,
+            lastUpdated: new Date()
+        };
+    }
+
+    /**
      * Calculate KPIs with trend comparison
      */
     calculateElectoralKPIsWithTrends(

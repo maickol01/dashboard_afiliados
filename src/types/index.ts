@@ -45,9 +45,33 @@ export interface Person {
     achievementRate: number;
   };
 
+  // Métricas pre-calculadas (para evitar recursión en el cliente)
+  metrics?: {
+    brigadistas: number;
+    movilizadores: number;
+    ciudadanos: number;
+    total: number;
+    dia: number;
+    semana: number;
+    mes: number;
+  };
+
   // Campos adicionales para compatibilidad
   region?: string;
   registrationDate?: Date;
+}
+
+export interface MapLocation {
+  id: string;
+  nombre: string;
+  role: 'lider' | 'brigadista' | 'movilizador' | 'ciudadano';
+  lat: number;
+  lng: number;
+  seccion?: string;
+  parent_id?: string;
+  numero_cel?: string;
+  created_at: string;
+  geocode_status: string;
 }
 
 export interface Analytics {

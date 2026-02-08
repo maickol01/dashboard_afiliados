@@ -5,6 +5,14 @@ import { DatabaseError, NetworkError, ValidationError, ServiceError } from '../t
 import { useRealTimeUpdates } from './useRealTimeUpdates';
 import { DateRange } from '../components/shared/DateFilter';
 
+/**
+ * @deprecated
+ * Este hook es monolítico y causa problemas de rendimiento al descargar todo el padrón (100MB).
+ * POR FAVOR, utiliza los nuevos hooks optimizados de React Query en src/hooks/queries/:
+ * - useDashboardSummary: Para KPIs y métricas generales.
+ * - useMapData: Para datos geolocalizados del mapa.
+ * - useSubordinates: Para drill-down de jerarquía.
+ */
 export const useData = (dateRange: DateRange | null) => {
   const [data, setData] = useState<Person[]>([]);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);

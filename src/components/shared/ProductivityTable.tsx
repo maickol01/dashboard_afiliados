@@ -32,6 +32,22 @@ const ProductivityTable: React.FC<ProductivityTableProps> = ({
     const now = new Date();
 
     return data.map((person) => {
+      // 1. Usar métricas pre-calculadas si existen (OPTIMIZACIÓN RPC)
+      if (person.metrics) {
+        return {
+          id: person.id,
+          name: person.name,
+          originalPerson: person,
+          brigadistas: person.metrics.brigadistas,
+          movilizadores: person.metrics.movilizadores,
+          ciudadanos: person.metrics.ciudadanos,
+          total: person.metrics.total,
+          day: person.metrics.dia,
+          week: person.metrics.semana,
+          month: person.metrics.mes
+        };
+      }
+
       let brigadistasCount = 0;
       let movilizadoresCount = 0;
       let ciudadanosCount = 0;

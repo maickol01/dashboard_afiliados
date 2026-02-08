@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
-import { createAsyncStoragePersister } from '@tanstack/react-query-persist-client';
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import { get, set, del } from 'idb-keyval';
 
 // Configuración de caché
@@ -13,17 +13,19 @@ export const queryClient = new QueryClient({
       staleTime: STALE_TIME,
       gcTime: GC_TIME,
       retry: 2,
-      refetchOnWindowFocus: false, // Evitar recargas al cambiar de ventana para ahorrar datos
+      refetchOnWindowFocus: false, 
+      // Añadimos un meta para versionar la caché si fuera necesario
     },
   },
 });
 
-// Adaptador para idb-keyval (IndexedDB)
+// Adaptador para idb-keyval (IndexedDB) con prefijo de versión
+const CACHE_VERSION = 'v2';
 export const idbPersister = createAsyncStoragePersister({
   storage: {
     getItem: async (key) => {
         try {
-            return await get(key);
+            return await get(`${CACHE_VERSION}-${key}`);
         } catch (e) {
             console.error('Error reading from IDB', e);
             return null;
@@ -31,14 +33,14 @@ export const idbPersister = createAsyncStoragePersister({
     },
     setItem: async (key, value) => {
         try {
-            await set(key, value);
+            await set(`${CACHE_VERSION}-${key}`, value);
         } catch (e) {
             console.error('Error writing to IDB', e);
         }
     },
     removeItem: async (key) => {
         try {
-            await del(key);
+            await del(`${CACHE_VERSION}-${key}`);
         } catch (e) {
             console.error('Error removing from IDB', e);
         }

@@ -49,3 +49,34 @@ export const checkDateFilter = (dateStr: Date | string, selectedOption: string, 
     }
     return true;
 };
+
+export const getFilterDateRange = (selectedOption: string, customRange: { startDate: Date | null, endDate: Date | null }) => {
+    const now = new Date();
+    let startDate: Date | null = null;
+    let endDate: Date | null = new Date(); 
+
+    if (selectedOption === 'total') return { start: undefined, end: undefined };
+    
+    if (selectedOption === 'day') {
+        startDate = new Date(now);
+        startDate.setHours(0, 0, 0, 0);
+    } else if (selectedOption === 'week') {
+        startDate = new Date(now);
+        // Empezamos lunes
+        const day = now.getDay() || 7;
+        startDate.setDate(now.getDate() - day + 1);
+        startDate.setHours(0, 0, 0, 0);
+    } else if (selectedOption === 'month') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        startDate.setHours(0, 0, 0, 0);
+    } else if (selectedOption === 'custom') {
+        startDate = customRange.startDate;
+        endDate = customRange.endDate || new Date();
+        if (endDate) endDate.setHours(23, 59, 59, 999);
+    }
+
+    return { 
+        start: startDate?.toISOString(), 
+        end: endDate?.toISOString() 
+    };
+};

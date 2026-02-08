@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
-import { useData } from '../../hooks/useData';
+import React, { useState, useMemo } from 'react';
+import { AlertTriangle, RefreshCw, MapPin } from 'lucide-react';
+import { useDashboardSummary } from '../../hooks/queries/useDashboardSummary';
+import { useMapData } from '../../hooks/queries/useMapData';
 import { NavojoaElectoralAnalytics } from '../../types/navojoa-electoral';
 import { navojoaElectoralService } from '../../services/navojoaElectoralService';
 import { useMobileDetection } from '../../hooks/useMobileDetection';
-import { DataService } from '../../services/dataService';
+import { useGlobalFilter } from '../../context/GlobalFilterContext';
+import { checkDateFilter, getFilterDateRange } from '../../utils/dateUtils';
 
 // Import the three main Navojoa components
 import KPICards from '../analytics/navojoa/KPICards';
@@ -14,191 +16,100 @@ import SectionHeatMap from '../analytics/navojoa/SectionHeatMap';
 
 const GeographicAnalysisPage: React.FC = () => {
   const { isMobile } = useMobileDetection();
+  const { selectedOption, customRange } = useGlobalFilter();
+  const { start, end } = useMemo(() => getFilterDateRange(selectedOption, customRange), [selectedOption, customRange]);
   
   // State for filtering
   const [selectedRole, setSelectedRole] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
 
-  // Get data from useData hook
+  // 1. Obtener datos optimizados del Mapa (solo geolocalizados y filtrados por fecha en servidor)
   const {
-    data: hierarchicalData,
-    analytics,
-    loading: dataLoading,
-    error: dataError,
-    refetchData,
-  } = useData(null);
+    data: mapPeople = [],
+    isLoading: loadingMap,
+    error: errorMap,
+    refetch: refetchMap
+  } = useMapData(start, end);
 
-  // Memoize the flattened data (all people)
-  const flatData = React.useMemo(() => {
-    if (!hierarchicalData) return [];
-    return DataService.getAllPeopleFlat(hierarchicalData);
-  }, [hierarchicalData]);
+  // 2. Obtener resumen de analíticas (KPIs por sección pre-agregados)
+  const {
+    data: summary,
+    isLoading: loadingSummary,
+    error: errorSummary,
+    refetch: refetchSummary
+  } = useDashboardSummary(start, end);
 
-  // Memoize the filtered data for the map view
-  const mapData = React.useMemo(() => {
-    console.log(`[MAP FILTER] Recalculating... Search: "${searchTerm}", Role: "${selectedRole}"`);
+  const loading = loadingMap || loadingSummary;
+  const dataError = errorMap || errorSummary;
 
-    // Helper to collect all descendant IDs recursively
-    const collectHierarchyIds = (people: Person[], idSet: Set<string>) => {
-      people.forEach(p => {
-        idSet.add(p.id);
-        if (p.children && p.children.length > 0) {
-          collectHierarchyIds(p.children, idSet);
-        }
-      });
-    };
+  // Filtrar los datos del mapa localmente (solo Búsqueda y Rol, la Fecha ya viene del servidor)
+  const filteredMapData = useMemo(() => {
+    if (!mapPeople) return [];
+    
+    console.log(`🔍 [MAP DEBUG] Puntos recibidos del servidor: ${mapPeople.length}`);
+    
+    let filtered = mapPeople;
 
-    // 1. Search term takes priority
-    if (searchTerm.trim() !== '') {
-        const term = searchTerm.toLowerCase();
-        const rootMatches = flatData.filter(p => 
-            p.nombre.toLowerCase().includes(term) ||
-            (p.clave_electoral && p.clave_electoral.toLowerCase().includes(term))
-        );
-        
-        console.log(`[MAP FILTER] Found ${rootMatches.length} search matches.`);
-        const relevantIds = new Set<string>();
-        collectHierarchyIds(rootMatches, relevantIds);
-        
-        const finalData = flatData.filter(p => relevantIds.has(p.id));
-        console.log(`[MAP FILTER] Returning ${finalData.length} people based on search.`);
-        return finalData;
+    // Filtrar por rol si no es 'all'
+    if (selectedRole !== 'all') {
+      filtered = filtered.filter(p => p.role === selectedRole);
     }
 
-    // 2. Default view - show everyone (filtering handled by layer visibility)
-    console.log(`[MAP FILTER] Returning ${flatData.length} people for default view.`);
-    return flatData;
+    // Filtrar por término de búsqueda
+    if (searchTerm.trim() !== '') {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(p => 
+        p.nombre.toLowerCase().includes(term) ||
+        p.id.toLowerCase().includes(term)
+      );
+    }
 
-  }, [flatData, searchTerm]); // Removed selectedRole from dependency array
+    console.log(`🔍 [MAP DEBUG] Puntos a mostrar tras filtro local: ${filtered.length}`);
+    return filtered;
+  }, [mapPeople, selectedRole, searchTerm]);
 
-  // State for Navojoa electoral data
-  const [navojoaData, setNavojoaData] = useState<NavojoaElectoralAnalytics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  // Transformar los datos del resumen para los componentes de Navojoa
+  const navojoaData = useMemo<NavojoaElectoralAnalytics | null>(() => {
+    if (!summary) return null;
+    return navojoaElectoralService.generateAnalyticsFromSummary(summary);
+  }, [summary]);
 
-  // Load Navojoa electoral data on component mount and when hierarchical data changes
-  useEffect(() => {
-    const loadNavojoaData = async () => {
-      if (!hierarchicalData || !analytics) {
-        setLoading(dataLoading);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        console.log('🔍 GeographicAnalysisPage - Datos recibidos:', {
-          hierarchicalDataLength: hierarchicalData.length,
-          analyticsExists: !!analytics,
-          analyticsKeys: analytics ? Object.keys(analytics) : []
-        });
-
-        // Generate Navojoa electoral analytics from hierarchical data
-        const navojoaAnalytics = await navojoaElectoralService.generateNavojoaElectoralAnalytics(
-          hierarchicalData,
-          analytics
-        );
-
-        setNavojoaData(navojoaAnalytics);
-        setLastRefresh(new Date());
-      } catch (err) {
-        console.error('Error loading Navojoa electoral data:', err);
-        setError(err instanceof Error ? err.message : 'Error desconocido al cargar datos');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadNavojoaData();
-  }, [hierarchicalData, analytics, dataLoading]);
+  // Handle manual refresh
+  const handleRefresh = async () => {
+    refetchMap();
+    refetchSummary();
+  };
 
   // Handle section click from stacked bar chart
   const handleSectionClick = (sectionNumber: string) => {
     console.log(`Section ${sectionNumber} clicked`);
-    // Future enhancement: could show detailed section view or filter other components
   };
 
-  // Handle manual refresh
-  const handleRefresh = async () => {
-    if (loading) return;
-    
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Refresh base data first
-      await refetchData();
-
-      if (hierarchicalData && analytics) {
-        const navojoaAnalytics = await navojoaElectoralService.generateNavojoaElectoralAnalytics(
-          hierarchicalData,
-          analytics
-        );
-
-        setNavojoaData(navojoaAnalytics);
-        setLastRefresh(new Date());
-      }
-    } catch (err) {
-      console.error('Error refreshing Navojoa data:', err);
-      setError(err instanceof Error ? err.message : 'Error al actualizar datos');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle data loading state
-  if (dataLoading) {
+  // Handle loading state
+  if (loading && !mapPeople.length) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando datos de Supabase...</p>
+          <p className="text-gray-600">Cargando análisis geográfico optimizado...</p>
+          <p className="text-xs text-gray-400 mt-2">Accediendo a caché local (IndexedDB)...</p>
         </div>
       </div>
     );
   }
 
-  // Handle data error state
+  // Handle error state
   if (dataError) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="text-red-500 mb-4">
-            <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Error al cargar datos</h3>
-          <p className="text-gray-600 mb-4">{dataError}</p>
-          <button
-            onClick={refetchData}
-            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-light"
-          >
-            Reintentar
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Handle geographic analysis error state
-  if (error) {
-    return (
-      <div className={`bg-white rounded-lg shadow-md ${isMobile ? 'p-4' : 'p-6'}`}>
-        <div className="text-center">
-          <AlertTriangle className={`text-red-500 mx-auto mb-4 ${isMobile ? 'h-8 w-8' : 'h-12 w-12'}`} />
-          <h3 className={`font-semibold text-gray-900 mb-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
-            Error al cargar análisis geográfico
-          </h3>
-          <p className={`text-gray-600 mb-4 ${isMobile ? 'text-sm' : ''}`}>{error}</p>
+        <div className="text-center p-6 bg-white rounded-lg shadow-md max-w-md mx-auto">
+          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Error al cargar análisis</h3>
+          <p className="text-gray-600 mb-4">{dataError instanceof Error ? dataError.message : 'Error de conexión'}</p>
           <button
             onClick={handleRefresh}
-            disabled={loading}
-            className={`inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-light disabled:opacity-50 disabled:cursor-not-allowed ${isMobile ? 'text-sm' : ''}`}
+            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-light transition-colors"
           >
-            <RefreshCw className={`mr-2 ${loading ? 'animate-spin' : ''} ${isMobile ? 'h-3 w-3' : 'h-4 w-4'}`} />
             Reintentar
           </button>
         </div>
@@ -208,20 +119,16 @@ const GeographicAnalysisPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header with refresh button */}
+      {/* Header with status */}
       <div className={`flex items-center justify-between bg-white rounded-lg shadow-md ${isMobile ? 'p-4' : 'p-6'}`}>
         <div>
-          <h2 className={`font-bold text-gray-900 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
+          <h2 className={`font-bold text-gray-900 flex items-center gap-2 ${isMobile ? 'text-lg' : 'text-2xl'}`}>
+            <MapPin className="text-primary" />
             Análisis Geográfico - Navojoa
           </h2>
           <p className={`text-gray-600 mt-1 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-            Análisis hiperlocal de las 78 secciones electorales
+            Optimizado: Cargando {mapPeople.length.toLocaleString()} ubicaciones geolocalizadas
           </p>
-          {navojoaData && (
-            <p className={`text-gray-500 mt-1 ${isMobile ? 'text-xs' : 'text-xs'}`}>
-              Última actualización: {lastRefresh.toLocaleTimeString()}
-            </p>
-          )}
         </div>
         <div className="flex items-center gap-2">
           {!isMobile && (
@@ -234,6 +141,7 @@ const GeographicAnalysisPage: React.FC = () => {
               <option value="lider">Líderes</option>
               <option value="brigadista">Brigadistas</option>
               <option value="movilizador">Movilizadores</option>
+              <option value="ciudadano">Ciudadanos</option>
             </select>
           )}
           <button
@@ -249,26 +157,28 @@ const GeographicAnalysisPage: React.FC = () => {
       </div>
 
       {/* Interactive Navojoa Map Component */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
         <div className={`p-4 border-b border-gray-100 flex items-center justify-between ${isMobile ? 'flex-col items-start gap-2' : ''}`}>
           <h3 className="font-bold text-gray-800 flex items-center gap-2">
-            📍 Mapa Interactivo de Navojoa
+            📍 Mapa Interactivo
           </h3>
-          <div className="flex gap-2">
-            <span className="flex items-center gap-1 text-[10px] text-gray-500">
-              <span className="w-2 h-2 rounded-full bg-red-400"></span> Afiliados
-            </span>
-            <span className="flex items-center gap-1 text-[10px] text-gray-500">
-              <span className="w-2 h-2 rounded-full bg-green-600 opacity-40"></span> Densidad Alta
-            </span>
+          <div className="flex gap-4">
+             <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-600"></div>
+                <span className="text-xs text-gray-600">Afiliados</span>
+             </div>
+             <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500 opacity-50"></div>
+                <span className="text-xs text-gray-600">Densidad</span>
+             </div>
           </div>
         </div>
         <NavojoaMapLibre 
-          data={mapData}
+          data={filteredMapData as any}
           height={isMobile ? '400px' : '600px'}
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
-          allPeople={flatData}
+          allPeople={mapPeople as any}
           selectedRole={selectedRole}
           onRoleChange={setSelectedRole}
         />
@@ -294,34 +204,19 @@ const GeographicAnalysisPage: React.FC = () => {
         loading={loading}
       />
 
-      {/* Data Quality Indicator */}
-
-      {/* Data Quality Indicator */}
+      {/* Data Info Indicator */}
       {navojoaData && !loading && (
         <div className={`bg-blue-50 border border-blue-200 rounded-lg ${isMobile ? 'p-3' : 'p-4'}`}>
           <div className="flex items-start gap-3">
-            <div className={`text-blue-600 mt-0.5 flex-shrink-0 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-              ℹ️
-            </div>
+            <div className="text-blue-600 mt-0.5 flex-shrink-0">ℹ️</div>
             <div>
               <h4 className={`font-medium text-blue-800 mb-1 ${isMobile ? 'text-sm' : ''}`}>
-                Información del Análisis
+                Información de Rendimiento
               </h4>
               <div className={`text-blue-700 space-y-1 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-                <p>
-                  • <strong>{navojoaData.sectionData.length}</strong> secciones con datos de {navojoaData.kpis.totalRegistrations.toLocaleString()} registros totales
-                </p>
-                <p>
-                  • Cobertura territorial: <strong>{navojoaData.kpis.coveragePercentage.toFixed(1)}%</strong> de las 78 secciones de Navojoa
-                </p>
-                <p>
-                  • Promedio de <strong>{navojoaData.kpis.averageRegistrationsPerSection.toFixed(1)}</strong> registros por sección activa
-                </p>
-                {!isMobile && (
-                  <p className="text-blue-600 mt-2">
-                    Los datos se actualizan automáticamente cuando cambia la información jerárquica.
-                  </p>
-                )}
+                <p>• Los datos se cargan instantáneamente desde la caché local (IndexedDB).</p>
+                <p>• El mapa solo procesa {mapPeople.length.toLocaleString()} registros con coordenadas.</p>
+                <p>• El resumen analítico fue pre-calculado en el servidor para mayor velocidad.</p>
               </div>
             </div>
           </div>

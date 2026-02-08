@@ -1,6 +1,6 @@
 
 import { supabase, type Lider, type Brigadista, type Movilizador, type Ciudadano } from '../lib/supabase'
-import { Person, Analytics, LeaderPerformanceData, Period, PerformancePeriod } from '../types';
+import { Person, MapLocation, Analytics, LeaderPerformanceData, Period, PerformancePeriod } from '../types';
 import { DatabaseError, NetworkError, ServiceError, ValidationError } from '../types/errors'
 import { withDatabaseRetry, CircuitBreaker } from '../utils/retry'
 import { cacheManager } from './cacheManager'
@@ -29,6 +29,95 @@ export class DataService {
   // Initialize cache warming strategies
   static {
     this.setupCacheWarmingStrategies()
+  }
+
+  // Optimized RPC Methods
+  static async getDashboardSummary(startDate?: string, endDate?: string): Promise<Analytics> {
+    return this.circuitBreaker.execute(async () => {
+      const { data, error } = await supabase.rpc('get_dashboard_summary', {
+          p_start_date: startDate,
+          p_end_date: endDate
+      });
+
+      if (error) {
+        throw new DatabaseError('Failed to fetch dashboard summary', error.code, { message: error.details }, error.hint);
+      }
+
+      // Merge with empty analytics structure to ensure type safety
+      const empty = this.getEmptyAnalytics();
+      return { ...empty, ...data };
+    });
+  }
+
+  static async getMapLocations(startDate?: string, endDate?: string): Promise<MapLocation[]> {
+    return this.circuitBreaker.execute(async () => {
+      const { data, error } = await supabase.rpc('get_map_locations', {
+          p_start_date: startDate,
+          p_end_date: endDate
+      });
+
+      if (error) {
+        throw new DatabaseError('Failed to fetch map locations', error.code, { message: error.details }, error.hint);
+      }
+
+      return (data || []) as MapLocation[];
+    });
+  }
+
+  static async getSubordinates(parentId: string | null, parentRole: 'lider' | 'brigadista' | 'movilizador', startDate?: string, endDate?: string): Promise<Person[]> {
+    return this.circuitBreaker.execute(async () => {
+      // Si parentId es null o vacío, pasamos null al RPC
+      const uuid = parentId ? this.extractOriginalId(parentId) : null;
+      
+      const { data, error } = await supabase.rpc('get_subordinates_with_metrics', {
+        p_parent_id: uuid,
+        p_parent_role: parentRole,
+        p_start_date: startDate,
+        p_end_date: endDate
+      });
+
+      if (error) {
+        throw new DatabaseError(`Error al obtener subordinados (Rol: ${parentRole}, Padre: ${parentId})`, error.code);
+      }
+
+      return (data || []).map((record: any) => {
+          const person = this.convertToPersonFormat(record as any, record.role);
+          // Inyectar métricas pre-calculadas para la ProductivityTable
+          person.metrics = {
+              brigadistas: Number(record.brigadierCount || 0),
+              movilizadores: Number(record.mobilizerCount || 0),
+              ciudadanos: Number(record.citizenCount || 0),
+              total: Number(record.citizenCount || 0),
+              dia: Number(record.todayCount || 0),
+              semana: Number(record.weekCount || 0),
+              mes: Number(record.monthCount || 0)
+          };
+          return person;
+      });
+    });
+  }
+
+  static async searchPeopleServerSide(query: string): Promise<Person[]> {
+    if (!query || query.length < 3) return [];
+
+    return this.circuitBreaker.execute(async () => {
+      // Nota: Para una búsqueda real en todas las tablas, lo ideal sería un RPC o una vista.
+      // Por ahora, buscaremos en la tabla de ciudadanos que es la más grande, 
+      // o usaremos el método jerárquico si es necesario.
+      // Sin embargo, para cumplir con el requisito de "búsqueda en servidor":
+      
+      const { data, error } = await supabase
+        .from('ciudadanos')
+        .select('*')
+        .or(`nombre.ilike.%${query}%,clave_electoral.ilike.%${query}%`)
+        .limit(20);
+
+      if (error) {
+        throw new DatabaseError('Error en búsqueda de personas', error.code);
+      }
+
+      return (data || []).map(record => this.convertToPersonFormat(record as any, 'ciudadano'));
+    });
   }
 
   static async getAllHierarchicalData(forceRefresh: boolean = false): Promise<Person[]> {
@@ -154,7 +243,7 @@ export class DataService {
 
 
 
-  private static convertToPersonFormat(
+  public static convertToPersonFormat(
     dbRecord: Lider | Brigadista | Movilizador | Ciudadano,
     role: 'lider' | 'brigadista' | 'movilizador' | 'ciudadano'
   ): Person {

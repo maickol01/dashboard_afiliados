@@ -126,6 +126,7 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
         offsets: number[][];
     } | null>(null);
     const [isMapLoaded, setIsMapLoaded] = useState(false);
+    const [imagesLoaded, setImagesLoaded] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [sectionsLoaded, setSectionsLoaded] = useState(false);
     const hoveredSectionIdRef = useRef<string | number | null>(null);
@@ -172,45 +173,56 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
     }, [isFullscreen]);
 
     // Add images to map when loaded
-    const onMapLoad = useCallback((event: any) => {
+    const onMapLoad = useCallback(async (event: any) => {
         const map = event.target;
 
-        const createMarkerImage = (color: string, name: string) => {
-            const svg = `
-            <svg width="32" height="30" viewBox="0 0 32 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M16 0C8.27 0 2 6.27 2 14C2 22.5 16 30 16 30C16 30 30 22.5 30 14C30 6.27 23.73 0 16 0Z" fill="${color}"/>
-                <circle cx="16" cy="14" r="8" fill="white"/>
-            </svg>`;
-            const img = new Image();
-            const svgBlob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-            const url = URL.createObjectURL(svgBlob);
-            img.onload = () => {
-                if (!map.hasImage(name)) {
-                    map.addImage(name, img);
-                    console.log(`Added image ${name} to map`);
-                }
-                URL.revokeObjectURL(url);
-            };
-            img.onerror = (e) => console.error(`Failed to load marker image ${name}`, e);
-            img.src = url;
+        const createMarkerImage = (color: string, name: string): Promise<void> => {
+            return new Promise((resolve) => {
+                const svg = `
+                <svg width="32" height="30" viewBox="0 0 32 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M16 0C8.27 0 2 6.27 2 14C2 22.5 16 30 16 30C16 30 30 22.5 30 14C30 6.27 23.73 0 16 0Z" fill="${color}"/>
+                    <circle cx="16" cy="14" r="8" fill="white"/>
+                </svg>`;
+                const img = new Image();
+                const svgBlob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(svgBlob);
+                img.onload = () => {
+                    if (!map.hasImage(name)) {
+                        map.addImage(name, img);
+                        console.log(`Added image ${name} to map`);
+                    }
+                    URL.revokeObjectURL(url);
+                    resolve();
+                };
+                img.onerror = (e) => {
+                    console.error(`Failed to load marker image ${name}`, e);
+                    resolve(); // Resolve anyway to avoid blocking
+                };
+                img.src = url;
+            });
         };
 
+        const imagePromises: Promise<void>[] = [];
+
         // Standard Icons (Spec colors)
-        createMarkerImage('#9f2241', 'marker-ciudadano'); // Red
-        createMarkerImage('#FBBF24', 'marker-lider');     // Gold
-        createMarkerImage('#3b82f6', 'marker-brigadista'); // Blue (Changed from Purple)
-        createMarkerImage('#22C55E', 'marker-movilizador'); // Green
+        imagePromises.push(createMarkerImage('#9f2241', 'marker-ciudadano')); // Red
+        imagePromises.push(createMarkerImage('#FBBF24', 'marker-lider'));     // Gold
+        imagePromises.push(createMarkerImage('#3b82f6', 'marker-brigadista')); // Blue (Changed from Purple)
+        imagePromises.push(createMarkerImage('#22C55E', 'marker-movilizador')); // Green
         
         // Cluster Icons
-        createMarkerImage('#6b1426', 'cluster-ciudadano');  // Dark Red (Changed from Blue)
-        createMarkerImage('#B45309', 'cluster-lider');      // Dark Gold
-        createMarkerImage('#1d4ed8', 'cluster-brigadista'); // Dark Blue (Changed from Purple)
-        createMarkerImage('#15803D', 'cluster-movilizador'); // Dark Green
+        imagePromises.push(createMarkerImage('#6b1426', 'cluster-ciudadano'));  // Dark Red (Changed from Blue)
+        imagePromises.push(createMarkerImage('#B45309', 'cluster-lider'));      // Dark Gold
+        imagePromises.push(createMarkerImage('#1d4ed8', 'cluster-brigadista')); // Dark Blue (Changed from Purple)
+        imagePromises.push(createMarkerImage('#15803D', 'cluster-movilizador')); // Dark Green
 
         // Legacy support (to avoid breaking existing layers until fully migrated)
-        createMarkerImage('#9f2241', 'marker-#9f2241'); 
-        createMarkerImage('#3b82f6', 'marker-#3b82f6'); 
+        imagePromises.push(createMarkerImage('#9f2241', 'marker-#9f2241')); 
+        imagePromises.push(createMarkerImage('#3b82f6', 'marker-#3b82f6')); 
 
+        await Promise.all(imagePromises);
+        console.log('All map images loaded');
+        setImagesLoaded(true);
         setIsMapLoaded(true);
     }, []);
 
@@ -461,7 +473,7 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
 
                 <ElectoralSectionLayerLibre data={data} onSectionSelect={handleSectionSelect} onLoad={() => setSectionsLoaded(true)} />
 
-                {!isEditable && sectionsLoaded && (
+                {!isEditable && sectionsLoaded && imagesLoaded && (
                     <AffiliateMarkerLayerLibre data={data} isEditable={isEditable} selectedRole={selectedRole} />
                 )}
 

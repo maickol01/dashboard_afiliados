@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import Layout from './components/layout/Layout';
 import ConsolidatedAnalyticsPage from './components/analytics/ConsolidatedAnalyticsPage';
 import BrigadistasPage from './components/analytics/BrigadistasPage';
@@ -7,8 +7,9 @@ import HierarchyPage from './components/hierarchy/HierarchyPage';
 import { GeographicAnalysisPage, DataQualityPage } from './components/pages';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { DataErrorBoundary } from './components/common/DataErrorBoundary';
-import { useGlobalFilter, PageType } from './context/GlobalFilterContext';
-import { useData } from './hooks/useData';
+import { useGlobalFilter } from './context/GlobalFilterContext';
+import { useLideresList } from './hooks/queries/useLideresList';
+import { useSubordinates } from './hooks/queries/useSubordinates';
 import { HierarchicalFilterDropdown } from './components/shared';
 
 function App() {
@@ -21,7 +22,14 @@ function App() {
     setBrigadista 
   } = useGlobalFilter();
   
-  const { data: hierarchicalData, loading } = useData(null);
+  // Obtenemos solo la lista de líderes para el header
+  const { data: lideresList = [] } = useLideresList();
+  
+  // Obtenemos brigadistas solo si estamos en movilizadores y hay un líder seleccionado
+  const { data: brigadistasList = [] } = useSubordinates(
+    currentPage === 'movilizadores' ? selectedLeaderId : null, 
+    'lider'
+  );
 
   const renderPage = () => {
     switch (currentPage) {
@@ -44,28 +52,9 @@ function App() {
 
   const renderHeaderActions = () => {
     if (currentPage === 'brigadistas' || currentPage === 'movilizadores') {
-      const leaders = hierarchicalData.map(l => ({ id: l.id, name: l.name }));
+      const leaders = lideresList.map(l => ({ id: l.id, name: l.nombre }));
       
-      let brigadistas: { id: string; name: string }[] = [];
-      if (currentPage === 'movilizadores') {
-          if (selectedLeaderId) {
-              const leader = hierarchicalData.find(l => l.id === selectedLeaderId);
-              if (leader && leader.children) {
-                  brigadistas = leader.children
-                    .filter(c => c.role === 'brigadista')
-                    .map(b => ({ id: b.id, name: b.name }));
-              }
-          } else {
-              // If no leader selected, show all brigadistas
-              hierarchicalData.forEach(l => {
-                  if (l.children) {
-                      l.children
-                        .filter(c => c.role === 'brigadista')
-                        .forEach(b => brigadistas.push({ id: b.id, name: b.name }));
-                  }
-              });
-          }
-      }
+      const brigadistas = brigadistasList.map(b => ({ id: b.id, name: b.nombre }));
 
       return (
         <>
