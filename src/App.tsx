@@ -12,6 +12,7 @@ import { useLideresList } from './hooks/queries/useLideresList';
 import { useSubordinates } from './hooks/queries/useSubordinates';
 import { HierarchicalFilterDropdown } from './components/shared';
 import { removeLoader } from './utils/loader';
+import { DataService } from './services/DataService';
 
 function App() {
   const { 
@@ -24,7 +25,21 @@ function App() {
   } = useGlobalFilter();
 
   useEffect(() => {
+    // Remove native loader
     removeLoader();
+
+    // Initialize cache warming strategies asynchronously
+    // Using requestIdleCallback to avoid blocking the main thread during initial render
+    const initCache = () => {
+      DataService.setupCacheWarmingStrategies();
+    };
+
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(initCache);
+    } else {
+      // Fallback for browsers that don't support requestIdleCallback
+      setTimeout(initCache, 2000);
+    }
   }, []);
   
   // Obtenemos solo la lista de líderes para el header
