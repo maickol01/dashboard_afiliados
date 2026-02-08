@@ -26,11 +26,6 @@ export class DataService {
   private static circuitBreaker = new CircuitBreaker(5, 60000) // 5 failures, 1 minute recovery
   private static readonly CACHE_VERSION = '2.0.0'
 
-  // Initialize cache warming strategies
-  static {
-    this.setupCacheWarmingStrategies()
-  }
-
   // Optimized RPC Methods
   static async getDashboardSummary(startDate?: string, endDate?: string): Promise<Analytics> {
     return this.circuitBreaker.execute(async () => {
@@ -1513,7 +1508,7 @@ export class DataService {
   }
 
   // Setup cache warming strategies
-  private static setupCacheWarmingStrategies(): void {
+  public static setupCacheWarmingStrategies(): void {
     // Warm main hierarchical data
     cacheManager.addWarmingStrategy({
       key: 'hierarchical-data-main',
