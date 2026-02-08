@@ -41,7 +41,7 @@ describe('Navigation Integration', () => {
         fireEvent.click(brigadistasLinks[0]);
 
         // Check if page changed
-        expect(screen.getByText('Detalle de Productividad por Brigadista')).toBeInTheDocument();
+        expect(await screen.findByText('Detalle de Productividad por Brigadista')).toBeInTheDocument();
         expect(screen.getByRole('heading', { level: 2, name: 'Brigadistas' })).toBeInTheDocument();
     });
 });

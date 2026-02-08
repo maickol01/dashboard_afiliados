@@ -1,10 +1,5 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, lazy, Suspense } from 'react';
 import Layout from './components/layout/Layout';
-import ConsolidatedAnalyticsPage from './components/analytics/ConsolidatedAnalyticsPage';
-import BrigadistasPage from './components/analytics/BrigadistasPage';
-import MovilizadoresPage from './components/analytics/MovilizadoresPage';
-import HierarchyPage from './components/hierarchy/HierarchyPage';
-import { GeographicAnalysisPage, DataQualityPage } from './components/pages';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { DataErrorBoundary } from './components/common/DataErrorBoundary';
 import { useGlobalFilter } from './context/GlobalFilterContext';
@@ -13,6 +8,14 @@ import { useSubordinates } from './hooks/queries/useSubordinates';
 import { HierarchicalFilterDropdown } from './components/shared';
 import { removeLoader } from './utils/loader';
 import { DataService } from './services/DataService';
+import LoadingSpinner from './components/common/LoadingSpinner';
+
+const ConsolidatedAnalyticsPage = lazy(() => import('./components/analytics/ConsolidatedAnalyticsPage'));
+const BrigadistasPage = lazy(() => import('./components/analytics/BrigadistasPage'));
+const MovilizadoresPage = lazy(() => import('./components/analytics/MovilizadoresPage'));
+const HierarchyPage = lazy(() => import('./components/hierarchy/HierarchyPage'));
+const GeographicAnalysisPage = lazy(() => import('./components/pages/GeographicAnalysisPage'));
+const DataQualityPage = lazy(() => import('./components/pages/DataQualityPage'));
 
 function App() {
   const { 
@@ -109,7 +112,9 @@ function App() {
         headerActions={renderHeaderActions()}
       >
         <DataErrorBoundary>
-          {renderPage()}
+          <Suspense fallback={<LoadingSpinner />}>
+            {renderPage()}
+          </Suspense>
         </DataErrorBoundary>
       </Layout>
     </ErrorBoundary>
