@@ -4,30 +4,27 @@ import react from '@vitejs/plugin-react';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  optimizeDeps: {
-    exclude: ['lucide-react'],
-  },
   build: {
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            // Agrupar React
-            if (id.includes('react')) return 'vendor-react';
-            // Agrupar el Mapa (MapLibre es inmenso)
-            if (id.includes('maplibre-gl') || id.includes('react-map-gl')) return 'vendor-map';
-            // Agrupar Gráficas
-            if (id.includes('recharts')) return 'vendor-charts';
-            // Agrupar Supabase y utilidades de datos
-            if (id.includes('@supabase') || id.includes('@tanstack')) return 'vendor-data';
-            
-            // El resto de librerías pequeñas
-            return 'vendor-others';
+            // Solo separamos las librerías realmente pesadas (>500kb)
+            // que son independientes del núcleo de React.
+            if (id.includes('maplibre-gl') || id.includes('react-map-gl')) {
+              return 'vendor-map';
+            }
+            if (id.includes('recharts')) {
+              return 'vendor-charts';
+            }
+            if (id.includes('jspdf') || id.includes('xlsx') || id.includes('html2canvas')) {
+              return 'vendor-export';
+            }
+            // Mantenemos React, Lucide y el resto juntos para evitar errores de inicialización
           }
         },
       },
     },
-    // Aumentamos el límite de advertencia ya que algunas librerías son pesadas por naturaleza
-    chunkSizeWarningLimit: 1500,
+    chunkSizeWarningLimit: 1000,
   },
 });
