@@ -10,14 +10,24 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-is'],
-          'vendor-map': ['maplibre-gl', 'react-map-gl'],
-          'vendor-charts': ['recharts'],
-          'vendor-utils': ['@tanstack/react-query', '@supabase/supabase-js', 'lucide-react'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            // Agrupar React
+            if (id.includes('react')) return 'vendor-react';
+            // Agrupar el Mapa (MapLibre es inmenso)
+            if (id.includes('maplibre-gl') || id.includes('react-map-gl')) return 'vendor-map';
+            // Agrupar Gráficas
+            if (id.includes('recharts')) return 'vendor-charts';
+            // Agrupar Supabase y utilidades de datos
+            if (id.includes('@supabase') || id.includes('@tanstack')) return 'vendor-data';
+            
+            // El resto de librerías pequeñas
+            return 'vendor-others';
+          }
         },
       },
     },
-    chunkSizeWarningLimit: 1000,
+    // Aumentamos el límite de advertencia ya que algunas librerías son pesadas por naturaleza
+    chunkSizeWarningLimit: 1500,
   },
 });
