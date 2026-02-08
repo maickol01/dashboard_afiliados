@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import Layout from './components/layout/Layout';
 import ConsolidatedAnalyticsPage from './components/analytics/ConsolidatedAnalyticsPage';
 import BrigadistasPage from './components/analytics/BrigadistasPage';
@@ -11,6 +11,7 @@ import { useGlobalFilter } from './context/GlobalFilterContext';
 import { useLideresList } from './hooks/queries/useLideresList';
 import { useSubordinates } from './hooks/queries/useSubordinates';
 import { HierarchicalFilterDropdown } from './components/shared';
+import { removeLoader } from './utils/loader';
 
 function App() {
   const { 
@@ -21,6 +22,10 @@ function App() {
     selectedBrigadistaId, 
     setBrigadista 
   } = useGlobalFilter();
+
+  useEffect(() => {
+    removeLoader();
+  }, []);
   
   // Obtenemos solo la lista de líderes para el header
   const { data: lideresList = [] } = useLideresList();

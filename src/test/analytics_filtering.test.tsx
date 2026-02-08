@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ConsolidatedAnalyticsPage from '../components/analytics/ConsolidatedAnalyticsPage';
 import { useData } from '../hooks/useData';
 import { GlobalFilterProvider } from '../context/GlobalFilterContext';
@@ -36,6 +37,14 @@ const FilterControl = () => {
     );
 };
 
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            retry: false,
+        },
+    },
+});
+
 describe('ConsolidatedAnalyticsPage Filtering', () => {
     it('filters KPI cards based on global filter', async () => {
         const today = new Date();
@@ -67,10 +76,12 @@ describe('ConsolidatedAnalyticsPage Filtering', () => {
         (useData as any).mockReturnValue(mockData);
 
         render(
-            <GlobalFilterProvider>
-                <FilterControl />
-                <ConsolidatedAnalyticsPage />
-            </GlobalFilterProvider>
+            <QueryClientProvider client={queryClient}>
+                <GlobalFilterProvider>
+                    <FilterControl />
+                    <ConsolidatedAnalyticsPage />
+                </GlobalFilterProvider>
+            </QueryClientProvider>
         );
 
         // Initially Total (2 leaders)
