@@ -5,7 +5,7 @@ import { Person, NavojoaElectoralSection } from '../../../types';
 import { ElectoralSectionLayerLibre } from './ElectoralSectionLayerLibre';
 import { AffiliateMarkerLayerLibre } from './AffiliateMarkerLayerLibre';
 import { navojoaElectoralService } from '../../../services/navojoaElectoralService';
-import { MapPin, X, Maximize, Minimize } from 'lucide-react';
+import { MapPin, X, Maximize, Minimize, Layers } from 'lucide-react';
 import { SearchOverlay } from './SearchOverlay';
 import { findMarkersAtSameLocation, getSpiderOffsets } from '../../../utils/spiderify';
 import { SpiderLegsLayer } from './SpiderLegsLayer';
@@ -129,6 +129,7 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
     const [imagesLoaded, setImagesLoaded] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [sectionsLoaded, setSectionsLoaded] = useState(false);
+    const [showHeatmap, setShowHeatmap] = useState(false);
     const hoveredSectionIdRef = useRef<string | number | null>(null);
     const selectedSectionIdRef = useRef<string | number | null>(null);
 
@@ -435,6 +436,20 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
             </div>
 
             <div className="absolute bottom-4 left-3 z-10 flex flex-col gap-2">
+                <button
+                    onClick={() => {
+                        setShowHeatmap(!showHeatmap);
+                        if (!showHeatmap) {
+                            setSpiderifiedGroup(null);
+                            setPopupInfo(null);
+                        }
+                    }}
+                    className={`p-2 rounded-md shadow-md transition-colors ${showHeatmap ? 'bg-primary text-white ring-2 ring-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                    title={showHeatmap ? "Ocultar densidad de visitas" : "Mostrar densidad de visitas por sección"}
+                >
+                    <Layers className="w-5 h-5" />
+                </button>
+
                 <button onClick={() => setIsFullscreen(!isFullscreen)} className="p-2 rounded-md shadow-md bg-white text-gray-700 hover:bg-gray-50 transition-colors" title={isFullscreen ? "Salir de pantalla completa (ESC)" : "Pantalla completa"}>
                     {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
                 </button>
@@ -471,14 +486,14 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
             >
                 <NavigationControl position="top-right" />
 
-                <ElectoralSectionLayerLibre data={data} onSectionSelect={handleSectionSelect} onLoad={() => setSectionsLoaded(true)} />
+                <ElectoralSectionLayerLibre data={data} onSectionSelect={handleSectionSelect} onLoad={() => setSectionsLoaded(true)} showHeatmap={showHeatmap} />
 
-                {!isEditable && sectionsLoaded && imagesLoaded && (
+                {!isEditable && !showHeatmap && sectionsLoaded && imagesLoaded && (
                     <AffiliateMarkerLayerLibre data={data} isEditable={isEditable} selectedRole={selectedRole} />
                 )}
 
                 {/* Spiderify Elements */}
-                {spiderifiedGroup && (
+                {spiderifiedGroup && !showHeatmap && (
                     <>
                         <SpiderLegsLayer center={spiderifiedGroup.center} offsets={spiderifiedGroup.offsets} />
                         {spiderifiedGroup.people.map((person, index) => {

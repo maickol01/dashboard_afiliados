@@ -9,16 +9,26 @@ const PRIMARY_COLOR = '#235b4e';
 const HIGHLIGHT_COLOR = '#3b82f6';
 const SELECTED_COLOR = '#9f2241';
 
+// --- MANUAL VISITS DATA ---
+const SECTION_VISITS: Record<string, number> = {
+    '1241': 1,
+    '1244': 1,
+    '1282': 1,
+    '1260': 1,
+};
+
 interface ElectoralSectionLayerProps {
     data?: Person[];
     onSectionSelect: (section: NavojoaElectoralSection | null) => void;
     onLoad?: () => void;
+    showHeatmap?: boolean;
 }
 
 export const ElectoralSectionLayerLibre: React.FC<ElectoralSectionLayerProps> = ({
     data,
     onSectionSelect,
-    onLoad
+    onLoad,
+    showHeatmap = false
 }) => {
     const [geoJsonData, setGeoJsonData] = useState<any>(null);
     const [, setSectionStats] = useState<Map<string, NavojoaElectoralSection>>(new Map());
@@ -84,9 +94,6 @@ export const ElectoralSectionLayerLibre: React.FC<ElectoralSectionLayerProps> = 
                         };
                     })
                 };
-                setGeoJsonData(enhancedGeojson);
-                if (onLoad) onLoad();
-
                 // 2. Load/Process Section Stats
                 let hierarchicalData = data;
                 if (!hierarchicalData) {
@@ -97,6 +104,35 @@ export const ElectoralSectionLayerLibre: React.FC<ElectoralSectionLayerProps> = 
                 const sections = navojoaElectoralService.transformHierarchicalDataToSections(hierarchicalData);
                 const statsMap = new Map(sections.map(s => [s.sectionNumber.toString(), s]));
                 setSectionStats(statsMap);
+
+                // Update properties with stats for heatmap
+                let maxVisits = 1; // Default to 1 to prevent division by zero
+                Object.values(SECTION_VISITS).forEach(v => {
+                    if (v > maxVisits) maxVisits = v;
+                });
+
+                const finalGeojson = {
+                    ...enhancedGeojson,
+                    features: enhancedGeojson.features.map((f: any) => {
+                        const sectionStr = f.properties.SECCION?.toString() || f.id?.toString();
+                        const stats = statsMap.get(sectionStr);
+                        const total = stats ? stats.totalRegistrations : 0;
+                        const visits = SECTION_VISITS[sectionStr] || 0;
+                        
+                        return {
+                            ...f,
+                            properties: {
+                                ...f.properties,
+                                totalRegistrations: total,
+                                visits: visits,
+                                heatmapIntensity: maxVisits > 0 ? visits / maxVisits : 0
+                            }
+                        };
+                    })
+                };
+
+                setGeoJsonData(finalGeojson);
+                if (onLoad) onLoad();
             } catch (error) {
                 console.error('Error loading electoral section data:', error);
             }
@@ -115,13 +151,33 @@ export const ElectoralSectionLayerLibre: React.FC<ElectoralSectionLayerProps> = 
                     id="sections-fill"
                     type="fill"
                     paint={{
-                        'fill-color': [
+                        'fill-color': showHeatmap ? [
+                            'case',
+                            ['boolean', ['feature-state', 'selected'], false], SELECTED_COLOR,
+                            ['boolean', ['feature-state', 'hover'], false], HIGHLIGHT_COLOR,
+                            // Heatmap color interpolation based on intensity
+                            ['==', ['get', 'visits'], 0], 'transparent',
+                            [
+                                'interpolate',
+                                ['linear'],
+                                ['get', 'heatmapIntensity'],
+                                0, '#e5f5e0',
+                                0.5, '#41ab5d',
+                                1, '#005a32'
+                            ]
+                        ] : [
                             'case',
                             ['boolean', ['feature-state', 'selected'], false], SELECTED_COLOR,
                             ['boolean', ['feature-state', 'hover'], false], HIGHLIGHT_COLOR,
                             'transparent'
                         ],
-                        'fill-opacity': [
+                        'fill-opacity': showHeatmap ? [
+                            'case',
+                            ['boolean', ['feature-state', 'selected'], false], 0.8,
+                            ['boolean', ['feature-state', 'hover'], false], 0.7,
+                            ['==', ['get', 'visits'], 0], 0.1,
+                            0.6
+                        ] : [
                             'case',
                             ['boolean', ['feature-state', 'selected'], false], 0.4,
                             ['boolean', ['feature-state', 'hover'], false], 0.3,
