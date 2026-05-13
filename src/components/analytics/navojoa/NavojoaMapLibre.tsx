@@ -170,15 +170,18 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
     const [showHeatmap, setShowHeatmap] = useState(false);
     const [sectionVisits, setSectionVisits] = useState<Record<string, number>>(() => {
         const saved = localStorage.getItem('navojoa_section_visits');
-        return saved ? JSON.parse(saved) : SECTION_VISITS;
+        const parsed = saved ? JSON.parse(saved) : null;
+        return parsed && Object.keys(parsed).length > 0 ? parsed : SECTION_VISITS;
     });
     const [plannedVisits, setPlannedVisits] = useState<string[]>(() => {
         const saved = localStorage.getItem('navojoa_planned_visits');
-        return saved ? JSON.parse(saved) : PLANNED_VISITS;
+        const parsed = saved ? JSON.parse(saved) : null;
+        return parsed && parsed.length > 0 ? parsed : PLANNED_VISITS;
     });
     const [confirmedVisits, setConfirmedVisits] = useState<string[]>(() => {
         const saved = localStorage.getItem('navojoa_confirmed_visits');
-        return saved ? JSON.parse(saved) : CONFIRMED_VISITS;
+        const parsed = saved ? JSON.parse(saved) : null;
+        return parsed && parsed.length > 0 ? parsed : CONFIRMED_VISITS;
     });
 
     useEffect(() => {
