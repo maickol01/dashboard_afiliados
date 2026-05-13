@@ -21,8 +21,15 @@ export const SECTION_VISITS: Record<string, number> = {
     '1265': 1,
     '1240': 1,
     '1239': 1,
-    '1627': 2   ,
+    '1627': 2,
+    '1298': 1,
 };
+
+// Secciones marcadas como posibles (Amarillo)
+export const PLANNED_VISITS: string[] = ['1231', '1235', '1249', '1626', '1288', '1264', '1267'];
+
+// Secciones marcadas como seguras (Azul)
+export const CONFIRMED_VISITS: string[] = ['1285', '1289', '1291', '1243', '1237', '1252', '1625'];
 
 interface ElectoralSectionLayerProps {
     data?: Person[];
@@ -40,8 +47,8 @@ export const ElectoralSectionLayerLibre: React.FC<ElectoralSectionLayerProps> = 
     onLoad,
     showHeatmap = false,
     sectionVisits = SECTION_VISITS,
-    plannedVisits = [],
-    confirmedVisits = []
+    plannedVisits = PLANNED_VISITS,
+    confirmedVisits = CONFIRMED_VISITS
 }) => {
     const [baseGeoJson, setBaseGeoJson] = useState<any>(null);
     const [geoJsonData, setGeoJsonData] = useState<any>(null);

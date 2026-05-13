@@ -2,7 +2,7 @@ import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react'
 import MapLibre, { NavigationControl, MapRef, Popup, Marker } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Person, NavojoaElectoralSection } from '../../../types';
-import { ElectoralSectionLayerLibre, SECTION_VISITS } from './ElectoralSectionLayerLibre';
+import { ElectoralSectionLayerLibre, SECTION_VISITS, PLANNED_VISITS, CONFIRMED_VISITS } from './ElectoralSectionLayerLibre';
 import { AffiliateMarkerLayerLibre } from './AffiliateMarkerLayerLibre';
 import { navojoaElectoralService } from '../../../services/navojoaElectoralService';
 import { MapPin, X, Maximize, Minimize, Layers } from 'lucide-react';
@@ -174,11 +174,11 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
     });
     const [plannedVisits, setPlannedVisits] = useState<string[]>(() => {
         const saved = localStorage.getItem('navojoa_planned_visits');
-        return saved ? JSON.parse(saved) : [];
+        return saved ? JSON.parse(saved) : PLANNED_VISITS;
     });
     const [confirmedVisits, setConfirmedVisits] = useState<string[]>(() => {
         const saved = localStorage.getItem('navojoa_confirmed_visits');
-        return saved ? JSON.parse(saved) : [];
+        return saved ? JSON.parse(saved) : CONFIRMED_VISITS;
     });
 
     useEffect(() => {
