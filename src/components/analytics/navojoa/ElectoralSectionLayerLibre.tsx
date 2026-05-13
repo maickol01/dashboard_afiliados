@@ -26,7 +26,7 @@ export const SECTION_VISITS: Record<string, number> = {
 };
 
 // Secciones marcadas como posibles (Amarillo)
-export const PLANNED_VISITS: string[] = ['1231', '1235', '1249', '1626', '1288', '1264', '1267'];
+export const PLANNED_VISITS: string[] = ['1230', '1235', '1249', '1626', '1288', '1264', '1267'];
 
 // Secciones marcadas como seguras (Azul)
 export const CONFIRMED_VISITS: string[] = ['1285', '1289', '1291', '1243', '1237', '1252', '1625'];
