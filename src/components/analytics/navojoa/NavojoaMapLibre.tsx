@@ -2,7 +2,7 @@ import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react'
 import MapLibre, { NavigationControl, MapRef, Popup, Marker } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Person, NavojoaElectoralSection } from '../../../types';
-import { ElectoralSectionLayerLibre } from './ElectoralSectionLayerLibre';
+import { ElectoralSectionLayerLibre, SECTION_VISITS } from './ElectoralSectionLayerLibre';
 import { AffiliateMarkerLayerLibre } from './AffiliateMarkerLayerLibre';
 import { navojoaElectoralService } from '../../../services/navojoaElectoralService';
 import { MapPin, X, Maximize, Minimize, Layers } from 'lucide-react';
@@ -62,7 +62,17 @@ const OSM_STYLE = {
     ]
 };
 
-const SectionDetailPanel: React.FC<{ section: NavojoaElectoralSection | null, onClose: () => void }> = ({ section, onClose }) => {
+const SectionDetailPanel: React.FC<{ 
+    section: NavojoaElectoralSection | null, 
+    onClose: () => void, 
+    showHeatmap: boolean,
+    visits: number,
+    isPlanned: boolean,
+    isConfirmed: boolean,
+    onAddVisit: () => void,
+    onTogglePlanned: () => void,
+    onToggleConfirmed: () => void
+}> = ({ section, onClose, showHeatmap, visits, isPlanned, isConfirmed, onAddVisit, onTogglePlanned, onToggleConfirmed }) => {
     if (!section) return null;
 
     return (
@@ -74,34 +84,62 @@ const SectionDetailPanel: React.FC<{ section: NavojoaElectoralSection | null, on
                 </h3>
                 <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full"><X className="w-4 h-4" /></button>
             </div>
-            <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                    <span className="text-gray-600">Colonia Principal:</span>
-                    <span className="font-medium text-gray-800">{section.colonia || 'N/D'}</span>
+            
+            {showHeatmap ? (
+                <div className="space-y-3 text-sm">
+                    <div className="flex justify-between items-center bg-gray-50 p-2 rounded-md">
+                        <span className="text-gray-700 font-bold">Visitas realizadas:</span>
+                        <span className="font-bold text-lg text-primary">{visits}</span>
+                    </div>
+                    <button 
+                        onClick={onAddVisit}
+                        className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-md transition-colors flex justify-center items-center gap-2 shadow-sm"
+                    >
+                        <span>+ Agregar Visita</span>
+                    </button>
+                    <button 
+                        onClick={onToggleConfirmed}
+                        className={`w-full font-medium py-2 px-4 rounded-md transition-colors flex justify-center items-center gap-2 shadow-sm ${isConfirmed ? 'bg-blue-100 text-blue-800 border border-blue-300' : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'}`}
+                    >
+                        <span>{isConfirmed ? '✅ Visita Segura' : 'Marcar Visita Segura'}</span>
+                    </button>
+                    <button 
+                        onClick={onTogglePlanned}
+                        className={`w-full font-medium py-2 px-4 rounded-md transition-colors flex justify-center items-center gap-2 shadow-sm ${isPlanned ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'}`}
+                    >
+                        <span>{isPlanned ? '⭐️ Planeada' : 'Marcar Posible Visita'}</span>
+                    </button>
                 </div>
-                <div className="flex justify-between items-center bg-gray-50 p-2 rounded-md">
-                    <span className="text-gray-700 font-bold">Total Registros:</span>
-                    <span className="font-bold text-lg text-primary">{section.totalRegistrations}</span>
+            ) : (
+                <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                        <span className="text-gray-600">Colonia Principal:</span>
+                        <span className="font-medium text-gray-800">{section.colonia || 'N/D'}</span>
+                    </div>
+                    <div className="flex justify-between items-center bg-gray-50 p-2 rounded-md">
+                        <span className="text-gray-700 font-bold">Total Registros:</span>
+                        <span className="font-bold text-lg text-primary">{section.totalRegistrations}</span>
+                    </div>
+                    <div className="border-t my-2"></div>
+                    <h4 className="font-semibold text-gray-700 pt-1">Desglose:</h4>
+                    <div className="flex justify-between text-xs">
+                        <span className="text-gray-500">Líderes:</span>
+                        <span className="font-medium">{section.lideres}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                        <span className="text-gray-500">Brigadistas:</span>
+                        <span className="font-medium">{section.brigadistas}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                        <span className="text-gray-500">Movilizadores:</span>
+                        <span className="font-medium">{section.movilizadores}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                        <span className="text-gray-500">Ciudadanos:</span>
+                        <span className="font-medium">{section.ciudadanos}</span>
+                    </div>
                 </div>
-                <div className="border-t my-2"></div>
-                <h4 className="font-semibold text-gray-700 pt-1">Desglose:</h4>
-                <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">Líderes:</span>
-                    <span className="font-medium">{section.lideres}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">Brigadistas:</span>
-                    <span className="font-medium">{section.brigadistas}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">Movilizadores:</span>
-                    <span className="font-medium">{section.movilizadores}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">Ciudadanos:</span>
-                    <span className="font-medium">{section.ciudadanos}</span>
-                </div>
-            </div>
+            )}
         </div>
     );
 };
@@ -130,6 +168,30 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [sectionsLoaded, setSectionsLoaded] = useState(false);
     const [showHeatmap, setShowHeatmap] = useState(false);
+    const [sectionVisits, setSectionVisits] = useState<Record<string, number>>(() => {
+        const saved = localStorage.getItem('navojoa_section_visits');
+        return saved ? JSON.parse(saved) : SECTION_VISITS;
+    });
+    const [plannedVisits, setPlannedVisits] = useState<string[]>(() => {
+        const saved = localStorage.getItem('navojoa_planned_visits');
+        return saved ? JSON.parse(saved) : [];
+    });
+    const [confirmedVisits, setConfirmedVisits] = useState<string[]>(() => {
+        const saved = localStorage.getItem('navojoa_confirmed_visits');
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    useEffect(() => {
+        localStorage.setItem('navojoa_section_visits', JSON.stringify(sectionVisits));
+    }, [sectionVisits]);
+
+    useEffect(() => {
+        localStorage.setItem('navojoa_planned_visits', JSON.stringify(plannedVisits));
+    }, [plannedVisits]);
+
+    useEffect(() => {
+        localStorage.setItem('navojoa_confirmed_visits', JSON.stringify(confirmedVisits));
+    }, [confirmedVisits]);
     const hoveredSectionIdRef = useRef<string | number | null>(null);
     const selectedSectionIdRef = useRef<string | number | null>(null);
 
@@ -415,7 +477,42 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
             style={isFullscreen ? { height: '100vh', width: '100vw', position: 'fixed', top: 0, left: 0, zIndex: 2000 } : { height, width: '100%', position: 'relative' }}
             className={`rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white transition-all duration-300 ${isFullscreen ? 'rounded-none' : ''} z-0`}
         >
-            <SectionDetailPanel section={selectedSection} onClose={() => {
+            <SectionDetailPanel 
+                section={selectedSection} 
+                showHeatmap={showHeatmap} 
+                visits={selectedSection ? (sectionVisits[selectedSection.sectionNumber.toString()] || 0) : 0}
+                isPlanned={selectedSection ? plannedVisits.includes(selectedSection.sectionNumber.toString()) : false}
+                isConfirmed={selectedSection ? confirmedVisits.includes(selectedSection.sectionNumber.toString()) : false}
+                onAddVisit={() => {
+                    if (selectedSection) {
+                        const secId = selectedSection.sectionNumber.toString();
+                        setSectionVisits(prev => ({
+                            ...prev,
+                            [secId]: (prev[secId] || 0) + 1
+                        }));
+                    }
+                }}
+                onTogglePlanned={() => {
+                    if (selectedSection) {
+                        const secId = selectedSection.sectionNumber.toString();
+                        setPlannedVisits(prev => 
+                            prev.includes(secId) 
+                                ? prev.filter(id => id !== secId) 
+                                : [...prev, secId]
+                        );
+                    }
+                }}
+                onToggleConfirmed={() => {
+                    if (selectedSection) {
+                        const secId = selectedSection.sectionNumber.toString();
+                        setConfirmedVisits(prev => 
+                            prev.includes(secId) 
+                                ? prev.filter(id => id !== secId) 
+                                : [...prev, secId]
+                        );
+                    }
+                }}
+                onClose={() => {
                 setSelectedSection(null);
                 if (mapRef.current && selectedSectionIdRef.current !== null) {
                     mapRef.current.getMap().setFeatureState({ source: 'sections-source', id: selectedSectionIdRef.current }, { selected: false });
@@ -486,7 +583,15 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
             >
                 <NavigationControl position="top-right" />
 
-                <ElectoralSectionLayerLibre data={data} onSectionSelect={handleSectionSelect} onLoad={() => setSectionsLoaded(true)} showHeatmap={showHeatmap} />
+                <ElectoralSectionLayerLibre 
+                    data={data} 
+                    onSectionSelect={handleSectionSelect} 
+                    onLoad={() => setSectionsLoaded(true)} 
+                    showHeatmap={showHeatmap} 
+                    sectionVisits={sectionVisits}
+                    plannedVisits={plannedVisits}
+                    confirmedVisits={confirmedVisits}
+                />
 
                 {!isEditable && !showHeatmap && sectionsLoaded && imagesLoaded && (
                     <AffiliateMarkerLayerLibre data={data} isEditable={isEditable} selectedRole={selectedRole} />

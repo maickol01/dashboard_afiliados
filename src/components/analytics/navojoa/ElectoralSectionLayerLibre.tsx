@@ -10,11 +10,18 @@ const HIGHLIGHT_COLOR = '#3b82f6';
 const SELECTED_COLOR = '#9f2241';
 
 // --- MANUAL VISITS DATA ---
-const SECTION_VISITS: Record<string, number> = {
+export const SECTION_VISITS: Record<string, number> = {
     '1241': 1,
     '1244': 1,
     '1282': 1,
-    '1260': 1,
+    '1260': 3,
+    '1287': 1,
+    '1259': 1,
+    '1625': 1,
+    '1265': 1,
+    '1240': 1,
+    '1239': 1,
+    '1627': 2   ,
 };
 
 interface ElectoralSectionLayerProps {
@@ -22,14 +29,21 @@ interface ElectoralSectionLayerProps {
     onSectionSelect: (section: NavojoaElectoralSection | null) => void;
     onLoad?: () => void;
     showHeatmap?: boolean;
+    sectionVisits?: Record<string, number>;
+    plannedVisits?: string[];
+    confirmedVisits?: string[];
 }
 
 export const ElectoralSectionLayerLibre: React.FC<ElectoralSectionLayerProps> = ({
     data,
     onSectionSelect,
     onLoad,
-    showHeatmap = false
+    showHeatmap = false,
+    sectionVisits = SECTION_VISITS,
+    plannedVisits = [],
+    confirmedVisits = []
 }) => {
+    const [baseGeoJson, setBaseGeoJson] = useState<any>(null);
     const [geoJsonData, setGeoJsonData] = useState<any>(null);
     const [, setSectionStats] = useState<Map<string, NavojoaElectoralSection>>(new Map());
 
@@ -94,6 +108,19 @@ export const ElectoralSectionLayerLibre: React.FC<ElectoralSectionLayerProps> = 
                         };
                     })
                 };
+                setBaseGeoJson(enhancedGeojson);
+            } catch (error) {
+                console.error('Error loading electoral section data:', error);
+            }
+        };
+        loadData();
+    }, []);
+
+    useEffect(() => {
+        if (!baseGeoJson) return;
+
+        const processData = async () => {
+            try {
                 // 2. Load/Process Section Stats
                 let hierarchicalData = data;
                 if (!hierarchicalData) {
@@ -107,17 +134,19 @@ export const ElectoralSectionLayerLibre: React.FC<ElectoralSectionLayerProps> = 
 
                 // Update properties with stats for heatmap
                 let maxVisits = 1; // Default to 1 to prevent division by zero
-                Object.values(SECTION_VISITS).forEach(v => {
+                Object.values(sectionVisits).forEach(v => {
                     if (v > maxVisits) maxVisits = v;
                 });
 
                 const finalGeojson = {
-                    ...enhancedGeojson,
-                    features: enhancedGeojson.features.map((f: any) => {
+                    ...baseGeoJson,
+                    features: baseGeoJson.features.map((f: any) => {
                         const sectionStr = f.properties.SECCION?.toString() || f.id?.toString();
                         const stats = statsMap.get(sectionStr);
                         const total = stats ? stats.totalRegistrations : 0;
-                        const visits = SECTION_VISITS[sectionStr] || 0;
+                        const visits = sectionVisits[sectionStr] || 0;
+                        const isPlanned = plannedVisits.includes(sectionStr) ? 1 : 0;
+                        const isConfirmed = confirmedVisits.includes(sectionStr) ? 1 : 0;
                         
                         return {
                             ...f,
@@ -125,6 +154,8 @@ export const ElectoralSectionLayerLibre: React.FC<ElectoralSectionLayerProps> = 
                                 ...f.properties,
                                 totalRegistrations: total,
                                 visits: visits,
+                                planned: isPlanned,
+                                confirmed: isConfirmed,
                                 heatmapIntensity: maxVisits > 0 ? visits / maxVisits : 0
                             }
                         };
@@ -134,11 +165,11 @@ export const ElectoralSectionLayerLibre: React.FC<ElectoralSectionLayerProps> = 
                 setGeoJsonData(finalGeojson);
                 if (onLoad) onLoad();
             } catch (error) {
-                console.error('Error loading electoral section data:', error);
+                console.error('Error processing section stats:', error);
             }
         };
-        loadData();
-    }, [data, onLoad]);
+        processData();
+    }, [baseGeoJson, data, sectionVisits, plannedVisits, confirmedVisits, onLoad]);
 
     // Layers definition
     const layers = useMemo(() => {
@@ -154,17 +185,18 @@ export const ElectoralSectionLayerLibre: React.FC<ElectoralSectionLayerProps> = 
                         'fill-color': showHeatmap ? [
                             'case',
                             ['boolean', ['feature-state', 'selected'], false], SELECTED_COLOR,
-                            ['boolean', ['feature-state', 'hover'], false], HIGHLIGHT_COLOR,
-                            // Heatmap color interpolation based on intensity
-                            ['==', ['get', 'visits'], 0], 'transparent',
-                            [
+                            // Priority colors
+                            ['==', ['get', 'confirmed'], 1], '#3b82f6', // blue
+                            ['>', ['get', 'visits'], 0], [
                                 'interpolate',
                                 ['linear'],
                                 ['get', 'heatmapIntensity'],
                                 0, '#e5f5e0',
                                 0.5, '#41ab5d',
                                 1, '#005a32'
-                            ]
+                            ],
+                            ['==', ['get', 'planned'], 1], '#facc15', // yellow
+                            'transparent'
                         ] : [
                             'case',
                             ['boolean', ['feature-state', 'selected'], false], SELECTED_COLOR,
@@ -174,9 +206,10 @@ export const ElectoralSectionLayerLibre: React.FC<ElectoralSectionLayerProps> = 
                         'fill-opacity': showHeatmap ? [
                             'case',
                             ['boolean', ['feature-state', 'selected'], false], 0.8,
-                            ['boolean', ['feature-state', 'hover'], false], 0.7,
-                            ['==', ['get', 'visits'], 0], 0.1,
-                            0.6
+                            ['==', ['get', 'confirmed'], 1], 0.7,
+                            ['>', ['get', 'visits'], 0], 0.6,
+                            ['==', ['get', 'planned'], 1], 0.5,
+                            0.1
                         ] : [
                             'case',
                             ['boolean', ['feature-state', 'selected'], false], 0.4,
@@ -191,13 +224,21 @@ export const ElectoralSectionLayerLibre: React.FC<ElectoralSectionLayerProps> = 
                     id="sections-outline"
                     type="line"
                     paint={{
-                        'line-color': [
+                        'line-color': showHeatmap ? [
+                            'case',
+                            ['boolean', ['feature-state', 'selected'], false], '#831843',
+                            PRIMARY_COLOR
+                        ] : [
                             'case',
                             ['boolean', ['feature-state', 'selected'], false], '#831843',
                             ['boolean', ['feature-state', 'hover'], false], '#2563eb',
                             PRIMARY_COLOR
                         ],
-                        'line-width': [
+                        'line-width': showHeatmap ? [
+                            'case',
+                            ['boolean', ['feature-state', 'selected'], false], 4,
+                            1.5
+                        ] : [
                             'case',
                             ['boolean', ['feature-state', 'selected'], false], 4,
                             ['boolean', ['feature-state', 'hover'], false], 3,
@@ -214,7 +255,12 @@ export const ElectoralSectionLayerLibre: React.FC<ElectoralSectionLayerProps> = 
                     minzoom={7}
                     filter={['<=', ['get', 'size_factor'], 1.2]}
                     layout={{
-                        'text-field': ['to-string', ['get', 'SECCION']],
+                        'text-field': showHeatmap ? [
+                            'case',
+                            ['>', ['get', 'visits'], 0],
+                            ['concat', ['to-string', ['get', 'SECCION']], '\n📍 ', ['to-string', ['get', 'visits']]],
+                            ['to-string', ['get', 'SECCION']]
+                        ] : ['to-string', ['get', 'SECCION']],
                         'text-font': ['Noto Sans Regular'],
                         'text-size': [
                             'interpolate', ['linear'], ['zoom'],
@@ -239,7 +285,12 @@ export const ElectoralSectionLayerLibre: React.FC<ElectoralSectionLayerProps> = 
                     minzoom={7}
                     filter={['>', ['get', 'size_factor'], 1.2]}
                     layout={{
-                        'text-field': ['to-string', ['get', 'SECCION']],
+                        'text-field': showHeatmap ? [
+                            'case',
+                            ['>', ['get', 'visits'], 0],
+                            ['concat', ['to-string', ['get', 'SECCION']], '\n📍 ', ['to-string', ['get', 'visits']]],
+                            ['to-string', ['get', 'SECCION']]
+                        ] : ['to-string', ['get', 'SECCION']],
                         'text-font': ['Noto Sans Regular'],
                         'text-size': [
                             'interpolate', ['linear'], ['zoom'],
