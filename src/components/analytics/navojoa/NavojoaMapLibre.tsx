@@ -573,6 +573,20 @@ const NavojoaMapLibre: React.FC<NavojoaMapProps> = ({
                 </div>
             )}
 
+            {showHeatmap && (
+                <button
+                    onClick={() => {
+                        localStorage.removeItem('navojoa_section_visits');
+                        localStorage.removeItem('navojoa_planned_visits');
+                        localStorage.removeItem('navojoa_confirmed_visits');
+                        window.location.reload();
+                    }}
+                    className="absolute bottom-4 left-4 z-20 bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-2 px-3 rounded shadow transition-colors"
+                >
+                    Reiniciar Datos Guardados
+                </button>
+            )}
+
             <MapLibre
                 ref={mapRef}
                 initialViewState={NAVOJOA_CENTER}
